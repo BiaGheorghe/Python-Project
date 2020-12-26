@@ -63,25 +63,36 @@ def get_data(s):  # de verificat daca linkul este valid
     pos_sf_titlu = re.search('</h1>', url.text).span()[0] - 18  # eliminam caracterele de la titlu pana la </h1>
     title = request[pos_incep_titlu:pos_sf_titlu]
     print(title, ' :titlul')
-    # de verificat daca mai e o data in tabela
-
-    pos_incep_nr_ep = re.search('<span class="bp_sub_heading">', url.text).span()[1]
-    pos_sf_nr_ep = re.search('episodes</span>', url.text).span()[0] - 1  # am eliminat spatiul de dupa nr
-    nr_of_ep = request[pos_incep_nr_ep:pos_sf_nr_ep]
-    print(nr_of_ep, ' :episoade')
-
-    score = input("precizati nota: ")  # de verificat daca e intre 0 si 10
-    last_seen_ep = input("precizati ultimul ep vizionat: ")  # de verificat daca e intre 0 si nr de ep aparute
-    date = input(
-        'data ultimei vizionari: ')  # de verificat daca e data valida (dupa ce a aparut serialul) si pana in data
-    # curenta
-    snoozed = input('vreti sa primiti notificari de episoade noi? ')  # de verificat daca e da sau nu
     my_cursor = my_db.cursor()
-    sql_com = "INSERT INTO tvseries_and_score(title,link,score,nr_episodes, last_seen_episode, the_date, " \
-              "snoozed) VALUES (%s,%s,%s,%s,%s,%s,%s) "
-    tv_series = [(title, s, score, nr_of_ep, last_seen_ep, date, snoozed)]
-    my_cursor.executemany(sql_com, tv_series)
-    my_db.commit()
+    selectul = 'select title from tvseries_and_score'
+    my_cursor.execute(selectul)
+    result_set = my_cursor.fetchall()
+    este = 0
+    for result in result_set:
+        print(result[0], title)
+        if result[0] == title:  # verificam daca a mai fost adaugat o data
+            este = 1
+
+    if este == 0:
+        pos_incep_nr_ep = re.search('<span class="bp_sub_heading">', url.text).span()[1]
+        pos_sf_nr_ep = re.search('episodes</span>', url.text).span()[0] - 1  # am eliminat spatiul de dupa nr
+        nr_of_ep = request[pos_incep_nr_ep:pos_sf_nr_ep]
+        print(nr_of_ep, ' :episoade')
+
+        score = input("precizati nota: ")  # de verificat daca e intre 0 si 10
+        last_seen_ep = input("precizati ultimul ep vizionat: ")  # de verificat daca e intre 0 si nr de ep aparute
+        date = input(
+            'data ultimei vizionari: ')  # de verificat daca e data valida (dupa ce a aparut serialul) si pana in data
+        # curenta
+        snoozed = input('vreti sa primiti notificari de episoade noi? ')  # de verificat daca e da sau nu
+        my_cursor = my_db.cursor()
+        sql_com = "INSERT INTO tvseries_and_score(title,link,score,nr_episodes, last_seen_episode, the_date, " \
+                  "snoozed) VALUES (%s,%s,%s,%s,%s,%s,%s) "
+        tv_series = [(title, s, score, nr_of_ep, last_seen_ep, date, snoozed)]
+        my_cursor.executemany(sql_com, tv_series)
+        my_db.commit()
+    else:
+        print("acest serial a mai fost adaugat o data")
 
 
 def execute_command(command):
