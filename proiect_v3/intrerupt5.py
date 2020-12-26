@@ -52,7 +52,15 @@ def set_score(s):
     my_cursor.execute(selectul, values)
     my_db.commit()
 
-    # print(my_cursor.rowcount, "record(s) affected")
+
+def set_date(s):
+    my_cursor = my_db.cursor()
+    title1 = s[9:len(s) - 11]
+    date1 = s[len(s) - 10:len(s)]
+    selectul = "UPDATE tvseries_and_score SET the_date = %s WHERE title = %s "
+    values = (date1, title1)
+    my_cursor.execute(selectul, values)
+    my_db.commit()
 
 
 def get_data(s):  # de verificat daca linkul este valid
@@ -132,6 +140,8 @@ def execute_command(command):
         set_score(command)
     elif command[0:16] == 'set_last_episode':
         set_score(command)
+    elif command[0:8] == 'set_date':
+        set_date(command)
     else:
         print("nu e buna comanda")
 
