@@ -7,8 +7,10 @@ import re
 
 my_db = mysql.connector.connect(host="localhost", user="bia", passwd="bia2", database="tvseries")
 
-
-# de verificat daca se realizeaza conexiunea
+if my_db:
+    print('Connection Successful')
+else:
+    print('Connection Unsuccesful')
 
 
 # pe de-o parte cu ajutorul unui thread o data la 5 secunde o sa verific daca datele luate cu ajutorul linkurilor
@@ -41,6 +43,18 @@ def display_movies():  # de verificat daca sunt filme de afisat in tabela
         print(row[1])
 
 
+def set_score(s):
+    my_cursor = my_db.cursor()
+    title1 = s[10:len(s) - 2]
+    score1 = s[len(s) - 1:len(s)]
+    selectul = "UPDATE tvseries_and_score SET score = %s WHERE title = %s "
+    values = (score1, title1)
+    my_cursor.execute(selectul, values)
+    my_db.commit()
+
+    # print(my_cursor.rowcount, "record(s) affected")
+
+
 def get_data(s):  # de verificat daca linkul este valid
     url = get(s)
     request = url.text
@@ -57,23 +71,14 @@ def get_data(s):  # de verificat daca linkul este valid
     print(nr_of_ep, ' :episoade')
 
     score = input("precizati nota: ")  # de verificat daca e intre 0 si 10
-    # print(score, " :nota")
-    if score == '':
-        score = "NULL"
-        print(score, "jhgku")
     last_seen_ep = input("precizati ultimul ep vizionat: ")  # de verificat daca e intre 0 si nr de ep aparute
-    if last_seen_ep == "":
-        last_seen_ep = 'NULL'
     date = input(
-        'data ultimei vizionari: ')  # de verificat daca e data valida (dupa ce a aparut serialul) si pana in data curenta
-    if date == "":
-        date = 'NULL'
+        'data ultimei vizionari: ')  # de verificat daca e data valida (dupa ce a aparut serialul) si pana in data
+    # curenta
     snoozed = input('vreti sa primiti notificari de episoade noi? ')  # de verificat daca e da sau nu
-    if snoozed == "":
-        snoozed = 'NULL'
-
     my_cursor = my_db.cursor()
-    sql_com = "INSERT INTO tvseries_and_score(title,link,score,nr_episodes, last_seen_episode, the_date, snoozed) VALUES (%s,%s,%s,%s,%s,%s,%s)"
+    sql_com = "INSERT INTO tvseries_and_score(title,link,score,nr_episodes, last_seen_episode, the_date, " \
+              "snoozed) VALUES (%s,%s,%s,%s,%s,%s,%s) "
     tv_series = [(title, s, score, nr_of_ep, last_seen_ep, date, snoozed)]
     my_cursor.executemany(sql_com, tv_series)
     my_db.commit()
@@ -84,6 +89,8 @@ def execute_command(command):
         display_movies()
     elif command[0:20] == 'https://www.imdb.com':
         get_data(command)
+    elif command[0:9] == 'set_score':
+        set_score(command)
     else:
         print("nu e buna comanda")
 
