@@ -62,7 +62,7 @@ def get_data(s):  # de verificat daca linkul este valid
     pos_incep_titlu = re.search('<h1 class="">', url.text).span()[1]
     pos_sf_titlu = re.search('</h1>', url.text).span()[0] - 18  # eliminam caracterele de la titlu pana la </h1>
     title = request[pos_incep_titlu:pos_sf_titlu]
-    print(title, ' :titlul')
+    print(title)
 
     my_cursor = my_db.cursor()
     selectul = 'select title from tvseries_and_score'
@@ -70,7 +70,6 @@ def get_data(s):  # de verificat daca linkul este valid
     result_set = my_cursor.fetchall()
     este = 0
     for result in result_set:
-        print(result[0], title)
         if result[0] == title:  # verificam daca a mai fost adaugat o data
             este = 1
 
@@ -96,6 +95,15 @@ def get_data(s):  # de verificat daca linkul este valid
             soup = BeautifulSoup(request1, 'html.parser')
             eptags = soup.select('strong')  # titlurile episoadelor
             titles = [tag.text for tag in eptags]
+            j: int = 0
+            sql_com = "INSERT INTO episodes(season, episode, title) VALUES (%s,%s,%s) "
+            my_cursor = my_db.cursor()
+            while titles[j] != 'Season ' + str(i + 1):
+                print('season: ', i + 1, 'ep: ', j + 1, 'nume: ', titles[j])
+                info = [(i + 1, j + 1, titles[j])]
+                my_cursor.executemany(sql_com, info)
+                my_db.commit()
+                j = j + 1
 
         score = input("precizati nota: ")  # de verificat daca e intre 0 si 10
         last_seen_ep = input("precizati ultimul ep vizionat: ")  # de verificat daca e intre 0 si nr de ep aparute pt
@@ -105,9 +113,10 @@ def get_data(s):  # de verificat daca linkul este valid
         # curenta
         snoozed = input('vreti sa primiti notificari de episoade noi? ')  # de verificat daca e da sau nu
         my_cursor = my_db.cursor()
-        sql_com = "INSERT INTO tvseries_and_score(title,link,score,nr_episodes, last_seen_episode, the_date, " \
-                  "snoozed) VALUES (%s,%s,%s,%s,%s,%s,%s) "
-        tv_series = [(title, s, score, nr_of_ep, last_seen_ep, date, snoozed)]
+        sql_com = "INSERT INTO tvseries_and_score(title,link,score,nr_episodes, nr_seasons, last_seen_episode, " \
+                  "the_date, " \
+                  "snoozed) VALUES (%s,%s,%s,%s,%s,%s,%s,%s) "
+        tv_series = [(title, s, score, nr_of_ep, nr_seasons, last_seen_ep, date, snoozed)]
         my_cursor.executemany(sql_com, tv_series)
         my_db.commit()
     else:
@@ -133,6 +142,5 @@ t.start()
 while 1:
     x = input()
     # aici introduc comenzile de la tastatura
-    print('\nYou entered %r\n' % x)
     execute_command(x)
     t.restart()
