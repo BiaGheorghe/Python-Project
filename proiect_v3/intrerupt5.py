@@ -1,9 +1,9 @@
 import time
 import threading
 from requests import get
-
 import mysql.connector
 import re
+from bs4 import BeautifulSoup
 
 my_db = mysql.connector.connect(host="localhost", user="bia", passwd="bia2", database="tvseries")
 
@@ -63,6 +63,7 @@ def get_data(s):  # de verificat daca linkul este valid
     pos_sf_titlu = re.search('</h1>', url.text).span()[0] - 18  # eliminam caracterele de la titlu pana la </h1>
     title = request[pos_incep_titlu:pos_sf_titlu]
     print(title, ' :titlul')
+
     my_cursor = my_db.cursor()
     selectul = 'select title from tvseries_and_score'
     my_cursor.execute(selectul)
@@ -74,13 +75,31 @@ def get_data(s):  # de verificat daca linkul este valid
             este = 1
 
     if este == 0:
+        id_film = s[27:len(s) - 17]
+
         pos_incep_nr_ep = re.search('<span class="bp_sub_heading">', url.text).span()[1]
         pos_sf_nr_ep = re.search('episodes</span>', url.text).span()[0] - 1  # am eliminat spatiul de dupa nr
         nr_of_ep = request[pos_incep_nr_ep:pos_sf_nr_ep]
-        print(nr_of_ep, ' :episoade')
+        print(int(nr_of_ep), ' :episoade')
+
+        pos_incep_season = re.search('season=', url.text).span()[1]
+        pos_sf_seasons = re.search('&nbsp;&nbsp;', url.text).span()[0] - 8
+        nr_seasons = int(request[pos_incep_season:pos_sf_seasons])
+        print(nr_seasons, ' :nr_seasons')
+
+        for i in range(0, nr_seasons):
+            link = 'https://www.imdb.com/title/' + id_film + '/episodes?season=' + str(
+                i + 1) + '&ref_=tt_eps_sn_' + str(i + 1)
+            print(link, ':link')
+            url1 = get(link)
+            request1 = url1.text
+            soup = BeautifulSoup(request1, 'html.parser')
+            eptags = soup.select('strong')  # titlurile episoadelor
+            titles = [tag.text for tag in eptags]
 
         score = input("precizati nota: ")  # de verificat daca e intre 0 si 10
-        last_seen_ep = input("precizati ultimul ep vizionat: ")  # de verificat daca e intre 0 si nr de ep aparute
+        last_seen_ep = input("precizati ultimul ep vizionat: ")  # de verificat daca e intre 0 si nr de ep aparute pt
+        # fiecare sezon
         date = input(
             'data ultimei vizionari: ')  # de verificat daca e data valida (dupa ce a aparut serialul) si pana in data
         # curenta
@@ -101,6 +120,8 @@ def execute_command(command):
     elif command[0:20] == 'https://www.imdb.com':
         get_data(command)
     elif command[0:9] == 'set_score':
+        set_score(command)
+    elif command[0:16] == 'set_last_episode':
         set_score(command)
     else:
         print("nu e buna comanda")
