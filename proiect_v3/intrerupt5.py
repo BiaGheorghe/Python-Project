@@ -21,7 +21,7 @@ class TheUpdate(threading.Thread):
         self.my_timer = time.time()  # initializez variabila time la ora curenta
 
     def restart(self):
-        self.my_timer = time.time() + 5
+        self.my_timer = time.time() + 120
         # variabila my_timer reprezinta ora exacta la care trebuie sa ajunga variabila
         # time pentru a face din nou restart
 
@@ -45,20 +45,30 @@ def display_movies():  # de verificat daca sunt filme de afisat in tabela
 
 def set_score(s):
     my_cursor = my_db.cursor()
-    title1 = s[10:len(s) - 2]
-    score1 = s[len(s) - 1:len(s)]
+    title = s[10:len(s) - 2]
+    score = s[len(s) - 1:len(s)]
     selectul = "UPDATE tvseries_and_score SET score = %s WHERE title = %s "
-    values = (score1, title1)
+    values = (score, title)
     my_cursor.execute(selectul, values)
     my_db.commit()
 
 
 def set_date(s):
     my_cursor = my_db.cursor()
-    title1 = s[9:len(s) - 11]
-    date1 = s[len(s) - 10:len(s)]
+    title = s[9:len(s) - 11]
+    date = s[len(s) - 10:len(s)]
     selectul = "UPDATE tvseries_and_score SET the_date = %s WHERE title = %s "
-    values = (date1, title1)
+    values = (date, title)
+    my_cursor.execute(selectul, values)
+    my_db.commit()
+
+
+def set_snooze(s):
+    my_cursor = my_db.cursor()
+    title = s[11:len(s) - 11]
+    snooze = s[len(s) - 2:len(s)]
+    selectul = "UPDATE tvseries_and_score SET the_date = %s WHERE title = %s "
+    values = (snooze, title)
     my_cursor.execute(selectul, values)
     my_db.commit()
 
@@ -94,25 +104,6 @@ def get_data(s):  # de verificat daca linkul este valid
         nr_seasons = int(request[pos_incep_season:pos_sf_seasons])
         print(nr_seasons, ' :nr_seasons')
 
-        for i in range(0, nr_seasons):
-            link = 'https://www.imdb.com/title/' + id_film + '/episodes?season=' + str(
-                i + 1) + '&ref_=tt_eps_sn_' + str(i + 1)
-            print(link, ':link')
-            url1 = get(link)
-            request1 = url1.text
-            soup = BeautifulSoup(request1, 'html.parser')
-            eptags = soup.select('strong')  # titlurile episoadelor
-            titles = [tag.text for tag in eptags]
-            j: int = 0
-            sql_com = "INSERT INTO episodes(season, episode, title) VALUES (%s,%s,%s) "
-            my_cursor = my_db.cursor()
-            while titles[j] != 'Season ' + str(i + 1):
-                print('season: ', i + 1, 'ep: ', j + 1, 'nume: ', titles[j])
-                info = [(i + 1, j + 1, titles[j])]
-                my_cursor.executemany(sql_com, info)
-                my_db.commit()
-                j = j + 1
-
         score = input("precizati nota: ")  # de verificat daca e intre 0 si 10
         last_seen_ep = input("precizati ultimul ep vizionat: ")  # de verificat daca e intre 0 si nr de ep aparute pt
         # fiecare sezon
@@ -127,6 +118,33 @@ def get_data(s):  # de verificat daca linkul este valid
         tv_series = [(title, s, score, nr_of_ep, nr_seasons, last_seen_ep, date, snoozed)]
         my_cursor.executemany(sql_com, tv_series)
         my_db.commit()
+
+        my_cursor = my_db.cursor()
+        selectul = 'select id from tvseries_and_score where title=title'
+        my_cursor.execute(selectul)
+        result_set = my_cursor.fetchall()
+        for result in result_set:
+            resultant = result[0]
+
+        for i in range(0, nr_seasons):
+            link = 'https://www.imdb.com/title/' + id_film + '/episodes?season=' + str(
+                i + 1) + '&ref_=tt_eps_sn_' + str(i + 1)
+            print(link, ':link')
+            url1 = get(link)
+            request1 = url1.text
+            soup = BeautifulSoup(request1, 'html.parser')
+            eptags = soup.select('strong')  # titlurile episoadelor
+            titles = [tag.text for tag in eptags]
+            j: int = 0
+            sql_com = "INSERT INTO episodes(serial, season, episode, title) VALUES (%s,%s,%s,%s) "
+            my_cursor = my_db.cursor()
+            while titles[j] != 'Season ' + str(i + 1):
+                print('serial: ', resultant, 'season: ', i + 1, 'ep: ', j + 1, 'nume: ', titles[j])
+                info = [(resultant, i + 1, j + 1, titles[j])]
+                my_cursor.executemany(sql_com, info)
+                my_db.commit()
+                j = j + 1
+
     else:
         print("acest serial a mai fost adaugat o data")
 
@@ -142,6 +160,8 @@ def execute_command(command):
         set_score(command)
     elif command[0:8] == 'set_date':
         set_date(command)
+    elif command[0:10] == 'set_snooze':
+        set_snooze(command)
     else:
         print("nu e buna comanda")
 
