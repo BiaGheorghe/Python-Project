@@ -52,17 +52,26 @@ def display_titles():
 
 def set_score(s):
     my_cursor = my_db.cursor()
-    title = s[10:len(s) - 2]
-    score = s[len(s) - 1:len(s)]
-    selectul = "UPDATE tvseries_and_score SET score = %s WHERE title = %s "
-    values = (score, title)
-    my_cursor.execute(selectul, values)
-    my_db.commit()
-    rowsaffected = my_cursor.rowcount
-    if rowsaffected == 0:
-        print("nu exista serial cu acest titllu in lista")
+    s = s[::-1]
+    score_fin = re.search(" ", s).span()[0]
+    score = s[0:score_fin]
+    print('score: ' + score)
+    s = s[::-1]
+    title = s[10:len(s)-len(score)-1]
+    print('title: ', title)
+    if 10 >= int(score) >= 0:
+        selectul = "UPDATE tvseries_and_score SET score = %s WHERE title = %s "
+        values = (score, title)
+        my_cursor.execute(selectul, values)
+        my_db.commit()
+        rowsaffected = my_cursor.rowcount
+        if rowsaffected == 0:
+            print("nu exista serial cu acest titllu in lista")
+        else:
+            print('succes')
     else:
-        print('succes')
+        print('nota pe care ati acordat-o nu este valida')
+        
 
 def set_date(s):
     my_cursor = my_db.cursor()
