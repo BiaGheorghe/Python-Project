@@ -56,12 +56,13 @@ def set_score(s):
     score = s[len(s) - 1:len(s)]
     selectul = "UPDATE tvseries_and_score SET score = %s WHERE title = %s "
     values = (score, title)
-    nr_rows = my_cursor.execute(selectul, values)
-    if nr_rows is not None:
-        my_db.commit()
+    my_cursor.execute(selectul, values)
+    my_db.commit()
+    rowsaffected = my_cursor.rowcount
+    if rowsaffected == 0:
+        print("nu exista serial cu acest titllu in lista")
     else:
-        print('nu exista niciun film cu acest titlu... incearca din nou')
-
+        print('succes')
 
 def set_date(s):
     my_cursor = my_db.cursor()
@@ -119,18 +120,18 @@ def suggestions():
         info = (title1, score1)
         my_cursor1.execute(selectul, info)
         result_set_1 = my_cursor1.fetchall()
-        if not result_set_1:
-            for result1 in result_set_1:
+        for result1 in result_set_1:
+            if result1[0] != '':
+                print('result1: ------', result1[0])
                 sn_and_ep = result1[0]
                 end_sn = re.search('e', sn_and_ep).span()[0]
                 season = int(sn_and_ep[1:end_sn])
                 print('season: ', season)
                 episode = int(sn_and_ep[end_sn + 1:len(sn_and_ep)])
                 print('episode: ', episode)
-            my_cursor1.close()
-        else:
-            print('acest serial nu are setat ultimul episod vizionat... incercati comanda set_last episode')
-
+            else:
+                print('acest serial nu are setat ultimul episod vizionat... incercati comanda set_last episode')
+    my_cursor1.close()
     my_cursor.close()
 
 
