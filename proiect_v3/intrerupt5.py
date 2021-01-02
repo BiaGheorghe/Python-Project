@@ -1,16 +1,19 @@
 import time
 import threading
+
+from pip._vendor.distlib.compat import raw_input
 from requests import get
 import mysql.connector
 import re
 from bs4 import BeautifulSoup
+import sys
 
-my_db = mysql.connector.connect(host="localhost", user="bia", passwd="bia2", database="tvseries")
-
-if my_db:
-    print('Connection Successful')
-else:
-    print('Connection Unsuccesful')
+try:
+    my_db = mysql.connector.connect(host="localhost", user="bia", passwd="bia2", database="tvseries")
+except mysql.connector.Error as err:
+    print("Something went wrong: {}".format(err) + 'Nu s-a putut realiza conexiunea...reporniti aplicatia si incercat '
+                                                   'din nou')
+    sys.exit()
 
 
 # pe de-o parte cu ajutorul unui thread o data la 5 secunde o sa verific daca datele luate cu ajutorul linkurilor
@@ -29,18 +32,22 @@ class TheUpdate(threading.Thread):
         self.restart()
         while 1:
             if time.time() >= self.my_timer:
-                # print("a expirat timpul")
                 # aici fac verificarile de update
+                #ia toate linkurile si verifica cate episoade sunt in toatl pentru fiecare link si le compara cu cele din baza de date
                 self.restart()  # resetez timpul
 
 
-def display_titles():  # de verificat daca sunt filme de afisat in tabela
-    my_cursor = my_db.cursor()
+def display_titles():
+    my_cursor = my_db.cursor(buffered=True)
     selectul = 'select * from tvseries_and_score'
     my_cursor.execute(selectul)
     result_set = my_cursor.fetchall()
-    for row in result_set:
-        print(row[1])
+    if not result_set:
+        print('nu esxista titluri adaugate')
+    else:
+        for row in result_set:
+            print(row[1])
+            my_cursor.close()
 
 
 def set_score(s):
@@ -49,8 +56,11 @@ def set_score(s):
     score = s[len(s) - 1:len(s)]
     selectul = "UPDATE tvseries_and_score SET score = %s WHERE title = %s "
     values = (score, title)
-    my_cursor.execute(selectul, values)
-    my_db.commit()
+    nr_rows = my_cursor.execute(selectul, values)
+    if nr_rows is not None:
+        my_db.commit()
+    else:
+        print('nu exista niciun film cu acest titlu... incearca din nou')
 
 
 def set_date(s):
@@ -59,8 +69,11 @@ def set_date(s):
     date = s[len(s) - 10:len(s)]
     selectul = "UPDATE tvseries_and_score SET the_date = %s WHERE title = %s "
     values = (date, title)
-    my_cursor.execute(selectul, values)
-    my_db.commit()
+    nr_rows = my_cursor.execute(selectul, values)
+    if nr_rows is not None:
+        my_db.commit()
+    else:
+        print('nu exista niciun film')
 
 
 def set_snooze(s):
@@ -75,8 +88,7 @@ def set_snooze(s):
 
 def set_last_episode(s):
     my_cursor = my_db.cursor()
-    # set_last_episode Urzeala tronurilor s3e2           2e3s bsshstsrhaerh ethehaeh
-    s = s[::-1]
+    s = s[::-1]  # oglinditul lui s
     ep_incep = re.search('e', s).span()[0]
     episode = s[0:ep_incep]
     print('episode- ', episode)
@@ -94,8 +106,7 @@ def set_last_episode(s):
 
 
 def suggestions():
-
-    my_cursor = my_db.cursor()
+    my_cursor = my_db.cursor(buffered=True)
     selectul = "select title, score from tvseries_and_score order by score desc "
     my_cursor.execute(selectul)
     result_set = my_cursor.fetchall()
@@ -103,21 +114,32 @@ def suggestions():
         title1 = result[0]
         score1 = result[1]
         print('-', title1, '-', score1)
-        my_cursor1 = my_db.cursor()
+        my_cursor1 = my_db.cursor(buffered=True)
         selectul = "select last_seen_episode from tvseries_and_score WHERE title = %s and score= %s "
         info = (title1, score1)
         my_cursor1.execute(selectul, info)
-        result_set_1 = my_cursor.fetchall()
-        for result1 in result_set_1:
-            sn_and_ep = result1[0]
-            end_sn = re.search('e', sn_and_ep).span()[0]
-            season = int(sn_and_ep[1:end_sn])
-            print('season: ', season)
-            episode = int(sn_and_ep[end_sn + 1:len(sn_and_ep)])
-            print('episode: ', episode)
+        result_set_1 = my_cursor1.fetchall()
+        if not result_set_1:
+            for result1 in result_set_1:
+                sn_and_ep = result1[0]
+                end_sn = re.search('e', sn_and_ep).span()[0]
+                season = int(sn_and_ep[1:end_sn])
+                print('season: ', season)
+                episode = int(sn_and_ep[end_sn + 1:len(sn_and_ep)])
+                print('episode: ', episode)
+            my_cursor1.close()
+        else:
+            print('acest serial nu are setat ultimul episod vizionat... incercati comanda set_last episode')
+
+    my_cursor.close()
 
 
-def get_data(s):  # de verificat daca linkul este valid
+def instructions():
+    print('INSTRUCTIONS:')
+
+
+def get_data(s):  # de verificat daca linkul exists valid
+    resultant: int = 0  # l-am initializat cu 0 pentru a nu mai avea warning la id
     url = get(s)
     request = url.text
 
@@ -126,17 +148,18 @@ def get_data(s):  # de verificat daca linkul este valid
     title = request[pos_incep_titlu:pos_sf_titlu]
     print(title)
 
-    my_cursor = my_db.cursor()
+    my_cursor1 = my_db.cursor()
     selectul = 'select title from tvseries_and_score'
-    my_cursor.execute(selectul)
-    result_set = my_cursor.fetchall()
-    este = 0
+    my_cursor1.execute(selectul)
+    result_set = my_cursor1.fetchall()
+    exists: int = 0
     for result in result_set:
         if result[0] == title:  # verificam daca a mai fost adaugat o data
-            este = 1
+            exists = 1
 
-    if este == 0:
-        id_film = s[27:len(s) - 17]
+    if exists == 0:
+        id_film = s[27:36]
+        print(id_film, ':id  film')
 
         pos_incep_nr_ep = re.search('<span class="bp_sub_heading">', url.text).span()[1]
         pos_sf_nr_ep = re.search('episodes</span>', url.text).span()[0] - 1  # am eliminat spatiul de dupa nr
@@ -148,12 +171,27 @@ def get_data(s):  # de verificat daca linkul este valid
         nr_seasons = int(request[pos_incep_season:pos_sf_seasons])
         print(nr_seasons, ' :nr_seasons')
 
-        score = input("precizati nota: ")  # de verificat daca e intre 0 si 10
+        score = raw_input('precizati nota: ')
+        if score == '':
+            score = 0
+            print(score)
+        else:
+            score_aux = int(score)
+            if (score_aux <= 10) and (0 <= score_aux):
+                score = score_aux
+                print(score)
+            else:
+                score = 0
+
         last_seen_ep = input("precizati ultimul ep vizionat: ")  # de verificat daca e intre 0 si nr de ep aparute pt
         # fiecare sezon
-        date = input(
-            'data ultimei vizionari: ')  # de verificat daca e data valida (dupa ce a aparut serialul) si pana in data
-        # curenta
+        date = raw_input('data ultimei vizionari: ')  # de verificat daca e data valida (dupa ce a aparut serialul)
+        # si pana in data curenta
+        if date == '':
+            date = '0000-00-00'
+            print(date)
+        else:
+            print(date)
         snoozed = input('vreti sa primiti notificari de episoade noi? ')  # de verificat daca e da sau nu
         my_cursor = my_db.cursor()
         sql_com = "INSERT INTO tvseries_and_score(title,link,score,nr_episodes, nr_seasons, last_seen_episode, " \
@@ -168,7 +206,8 @@ def get_data(s):  # de verificat daca linkul este valid
         my_cursor.execute(selectul)
         result_set = my_cursor.fetchall()
         for result in result_set:
-            resultant = result[0]
+            resultant = result[0]  # resultant sigur exista deroarece reprezinta id-ul serialului tocmai adaugat in
+            # baza de date
 
         for i in range(0, nr_seasons):
             link = 'https://www.imdb.com/title/' + id_film + '/episodes?season=' + str(
@@ -208,6 +247,8 @@ def execute_command(command):
         set_snooze(command)
     elif command[0:11] == 'suggestions':
         suggestions()
+    elif command[0:12] == 'instructions':
+        instructions()
     else:
         print("nu e buna comanda")
 
