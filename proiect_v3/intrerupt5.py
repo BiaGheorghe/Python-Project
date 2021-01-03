@@ -35,6 +35,27 @@ class TheUpdate(threading.Thread):
                 # aici fac verificarile de update
                 #ia toate linkurile si verifica cate episoade sunt in toatl pentru fiecare link si le compara cu cele din baza de date
                 self.restart()  # resetez timpul
+                
+def create_tb():
+    ok_tv = 1
+    my_cursor = my_db.cursor()
+    create_table_tvSeries = 'create table tvSeries_And_Score(id INT(255) UNSIGNED AUTO_INCREMENT PRIMARY KEY, ' \
+                            'title varchar(100), ' \
+                            'link varchar(254), score int(10), ' \
+                            'nr_episodes int(255) ,nr_seasons int(255), last_seen_episode varchar (7),the_date date, ' \
+                            'snoozed varchar(4)) '
+    try:
+        my_cursor.execute(create_table_tvSeries)
+        print('-Tabela tv_series_and_score a fost creata cu succes')
+    except mysql.connector.Error as the_err:
+        print(the_err)
+        print('-Tabela tv_series_and_score exista')
+        ok_tv = 0
+    if ok_tv == 1: #afisarea tabelelor
+        show_tables = 'show tables'
+        my_cursor.execute(show_tables)
+        for tb in my_cursor:
+            print(tb)
 
 
 def display_titles():
@@ -331,7 +352,7 @@ def execute_command(command):
     else:
         print("nu e buna comanda")
 
-
+creare_tb()
 t = TheUpdate()
 t.start()
 # pe de alta parte iau comenzile date de la tastatura si le prelucrez
