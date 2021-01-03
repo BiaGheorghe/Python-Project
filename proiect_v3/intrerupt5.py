@@ -425,6 +425,17 @@ def news():
                 print('link-ul nu mai e valid')
     else:
         print('lista e goala')
+        
+        
+def youtube(s):
+    target=s[3:len(s)]
+    search = SearchVideos(target, offset=1, mode="json", max_results=20)
+    if search.result() is not None:
+        dict = json.loads(search.result())
+        print(dict)
+        print(dict['search_result'][0]['link'])
+    else:
+        print('nu exista videoclipuri pentru aceasta cautare')
 
 
 def execute_command(command):
@@ -446,6 +457,8 @@ def execute_command(command):
         instructions()
     elif command[0:4] == 'news':
         news()
+    elif command[0:4] == 'yt':
+        youtube()
     else:
         print("nu e buna comanda")
 
