@@ -77,13 +77,29 @@ def set_date(s):
     my_cursor = my_db.cursor()
     title = s[9:len(s) - 11]
     date = s[len(s) - 10:len(s)]
-    selectul = "UPDATE tvseries_and_score SET the_date = %s WHERE title = %s "
-    values = (date, title)
-    nr_rows = my_cursor.execute(selectul, values)
-    if nr_rows is not None:
-        my_db.commit()
+    year, month, day = date.split('-')
+    isValidDate = True
+    try:
+        date = datetime.datetime(int(year), int(month), int(day))
+    except ValueError:
+        isValidDate = False
+    now = datetime.datetime.now()
+    if isValidDate:
+        if int(now.year)>=int(year) and int(now.month)>=int(month) and int(now.day)>=int(day):
+            print("Input date is valid ..")
+            selectul = "UPDATE tvseries_and_score SET the_date = %s WHERE title = %s "
+            values = (date, title)
+            my_cursor.execute(selectul, values)
+            my_db.commit()
+            rowsaffected = my_cursor.rowcount
+            if rowsaffected == 0:
+                print("nu exista serial cu acest titllu in lista sau ati setat deja aceasta data")
+            else:
+                print('succes')
+        else:
+            print("Input date is not valid..")
     else:
-        print('nu exista niciun film')
+        print("Input date is not valid..")
 
 
 def set_snooze(s):
