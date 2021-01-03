@@ -26,6 +26,7 @@ except mysql.connector.Error as err:
 #
 #     def restart(self):
 #         self.my_timer = time.time() + 120
+#         news()
 #         # variabila my_timer reprezinta ora exacta la care trebuie sa ajunga variabila
 #         # time pentru a face din nou restart
 #
