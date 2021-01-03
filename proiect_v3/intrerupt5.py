@@ -166,43 +166,46 @@ def set_last_episode(s):
         info = (title1,)
         my_cursor.execute(selectul, info)
         result_set = my_cursor.fetchall()
-        for result in result_set:
-            if result[0] != '':
-                print('result1: ------', result[0], '--------', result[1])
-                if 1 <= season <= int(
-                        result[0]):  # daca nr de sezoane dat este mai mic sau egal cu nr de sez ale serial
-                    my_cursor1 = my_db.cursor(buffered=True)
-                    selectul1 = 'select id from episodes WHERE serial = %s and season= %s'  # nr cate ep are sezonul
-                    info1 = (result[1], season)  # id-ul filmului si sezonul
-                    my_cursor1.execute(selectul1, info1)
-                    result_set1 = my_cursor1.fetchall()
+        if len(result_set) != 0:
+            for result in result_set:
+                if result[0] != '':
+                    print('result1: ------', result[0], '--------', result[1])
+                    if 1 <= season <= int(
+                            result[0]):  # daca nr de sezoane dat este mai mic sau egal cu nr de sez ale serial
+                        my_cursor1 = my_db.cursor(buffered=True)
+                        selectul1 = 'select id from episodes WHERE serial = %s and season= %s'  # nr cate ep are sezonul
+                        info1 = (result[1], season)  # id-ul filmului si sezonul
+                        my_cursor1.execute(selectul1, info1)
+                        result_set1 = my_cursor1.fetchall()
 
-                    try:
-                        episode = int(episode[::-1])
-                    except ValueError as error:
-                        print('Comanda incorecta...Incercati din nou')
-                        ok_episodes = 0
-                    if ok_episodes == 1:
+                        try:
+                            episode = int(episode[::-1])
+                        except ValueError as error:
+                            print('Comanda incorecta...Incercati din nou')
+                            ok_episodes = 0
+                        if ok_episodes == 1:
 
-                        if 1 <= episode <= len(result_set1):
-                            sn_and_ep = 's' + str(season) + 'e' + str(episode)
-                            my_cursor2 = my_db.cursor(buffered=True)
-                            selectul2 = "UPDATE tvseries_and_score SET last_seen_episode = %s WHERE title = %s "
-                            values = (sn_and_ep, title1)
-                            my_cursor2.execute(selectul2, values)
-                            my_db.commit()
-                            rowsaffected = my_cursor2.rowcount
-                            if rowsaffected == 0:
-                                print("nu exista serial cu acest titllu in lista sau ati setat deja acest episod")
+                            if 1 <= episode <= len(result_set1):
+                                sn_and_ep = 's' + str(season) + 'e' + str(episode)
+                                my_cursor2 = my_db.cursor(buffered=True)
+                                selectul2 = "UPDATE tvseries_and_score SET last_seen_episode = %s WHERE title = %s "
+                                values = (sn_and_ep, title1)
+                                my_cursor2.execute(selectul2, values)
+                                my_db.commit()
+                                rowsaffected = my_cursor2.rowcount
+                                if rowsaffected == 0:
+                                    print("nu exista serial cu acest titllu in lista sau ati setat deja acest episod")
+                                else:
+                                    print('succes')
                             else:
-                                print('succes')
-                        else:
-                            print('nu exista episodul cu nr ' + str(episode) + ' in sezonul ' + str(season))
+                                print('nu exista episodul cu nr ' + str(episode) + ' in sezonul ' + str(season))
+                    else:
+                        print('nu exista sezonul cu numarul ' + str(season))
                 else:
-                    print('nu exista sezonul cu numarul ' + str(season))
-            else:
-                print('nu exista acest serial in lista')
-        my_cursor.close()
+                    print('nu exista acest serial in lista')
+            my_cursor.close()
+        else:
+            print(title1+' nu exista in lista')
 
 
 def suggestions():
