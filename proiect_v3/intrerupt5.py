@@ -106,10 +106,18 @@ def set_snooze(s):
     my_cursor = my_db.cursor()
     title = s[11:len(s) - 3]
     snooze = s[len(s) - 2:len(s)]
-    selectul = "UPDATE tvseries_and_score SET snoozed = %s WHERE title = %s "
-    values = (snooze, title)
-    my_cursor.execute(selectul, values)
-    my_db.commit()
+    if snooze == 'da' or snooze == 'nu':
+        selectul = "UPDATE tvseries_and_score SET snoozed = %s WHERE title = %s "
+        values = (snooze, title)
+        my_cursor.execute(selectul, values)
+        my_db.commit()
+        rowsaffected = my_cursor.rowcount
+        if rowsaffected == 0:
+            print("nu exista serial cu acest titllu in lista sau ati setat deja aceasta optiune")
+        else:
+            print('succes')
+    else:
+        print('invalid input...alegeti da sau nu')
 
 
 def set_last_episode(s):
