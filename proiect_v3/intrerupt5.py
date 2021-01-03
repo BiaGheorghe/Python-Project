@@ -56,6 +56,25 @@ def create_tb():
         my_cursor.execute(show_tables)
         for tb in my_cursor:
             print(tb)
+            
+           
+def create_tb_episodes():
+    ok_ep: int = 1
+    my_cursor = my_db.cursor()
+    create_table_episodes = 'create table episodes(id INT(255) UNSIGNED AUTO_INCREMENT PRIMARY KEY, serial int(255), ' \
+                            'season int(100), episode int(100), title varchar(100)) '
+    try:
+        my_cursor.execute(create_table_episodes)
+        print('-Tabela episodes a fost creata cu succes')
+    except mysql.connector.Error as an_err:
+        print(an_err)
+        print('-Tabela episodes exista')
+        ok_ep = 0
+    if ok_ep == 1:
+        show_tables = 'show tables'
+        my_cursor.execute(show_tables)
+        for tb in my_cursor:
+            print(tb)
 
 
 def display_titles():
@@ -359,6 +378,7 @@ def execute_command(command):
         print("nu e buna comanda")
 
 creare_tb()
+create_tb_episodes()
 t = TheUpdate()
 t.start()
 # pe de alta parte iau comenzile date de la tastatura si le prelucrez
