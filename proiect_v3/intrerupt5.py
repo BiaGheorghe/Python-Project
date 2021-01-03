@@ -213,28 +213,31 @@ def suggestions():
     selectul = "select title, score from tvseries_and_score order by score desc "
     my_cursor.execute(selectul)
     result_set = my_cursor.fetchall()
-    for result in result_set:
-        title1 = result[0]
-        score1 = result[1]
-        print('-', title1, '-', score1)
-        my_cursor1 = my_db.cursor(buffered=True)
-        selectul = "select last_seen_episode from tvseries_and_score WHERE title = %s and score= %s "
-        info = (title1, score1)
-        my_cursor1.execute(selectul, info)
-        result_set_1 = my_cursor1.fetchall()
-        for result1 in result_set_1:
-            if result1[0] != '':
-                print('result1: ------', result1[0])
-                sn_and_ep = result1[0]
-                end_sn = re.search('e', sn_and_ep).span()[0]
-                season = int(sn_and_ep[1:end_sn])
-                print('season: ', season)
-                episode = int(sn_and_ep[end_sn + 1:len(sn_and_ep)])
-                print('episode: ', episode)
-            else:
-                print('acest serial nu are setat ultimul episod vizionat... incercati comanda set_last episode')
-    my_cursor1.close()
-    my_cursor.close()
+    if len(result_set) != 0:
+        for result in result_set:
+            title1 = result[0]
+            score1 = result[1]
+            print('-', title1, '-', score1)
+            my_cursor1 = my_db.cursor(buffered=True)
+            selectul = "select last_seen_episode from tvseries_and_score WHERE title = %s and score= %s "
+            info = (title1, score1)
+            my_cursor1.execute(selectul, info)
+            result_set_1 = my_cursor1.fetchall()
+            for result1 in result_set_1:
+                if result1[0] != '':
+                    print('result1: ------', result1[0])
+                    sn_and_ep = result1[0]
+                    end_sn = re.search('e', sn_and_ep).span()[0]
+                    season = int(sn_and_ep[1:end_sn])
+                    print('season: ', season)
+                    episode = int(sn_and_ep[end_sn + 1:len(sn_and_ep)])
+                    print('episode: ', episode)
+                else:
+                    print('acest serial nu are setat ultimul episod vizionat... incercati comanda set_last episode')
+            my_cursor1.close()
+        my_cursor.close()
+    else:
+        print('nu se pot face sugestii...nu exista niciun serial in lista')
 
 
 def instructions():
