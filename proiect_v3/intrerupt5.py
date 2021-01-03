@@ -1,12 +1,11 @@
 import time
 import threading
-
-from pip._vendor.distlib.compat import raw_input
 from requests import get
 import mysql.connector
 import re
 from bs4 import BeautifulSoup
 import sys
+import datetime
 
 try:
     my_db = mysql.connector.connect(host="localhost", user="bia", passwd="bia2", database="tvseries")
@@ -32,12 +31,37 @@ class TheUpdate(threading.Thread):
         self.restart()
         while 1:
             if time.time() >= self.my_timer:
-                # aici fac verificarile de update
-                #ia toate linkurile si verifica cate episoade sunt in toatl pentru fiecare link si le compara cu cele din baza de date
+                # aici fac verificarile de update ia toate linkurile si verifica cate episoade sunt in toatl pentru
+                # fiecare link si le compara cu cele din baza de date
                 self.restart()  # resetez timpul
-                
+
+
+def create_db():
+    try:
+        my_db1 = mysql.connector.connect(host="localhost", user="bia", passwd="bia2")
+    except mysql.connector.Error as error:
+        print(str(error)[0:5]+"Something went wrong: {}".format(
+            err) + 'Nu s-a putut realiza conexiunea...reporniti aplicatia si incercati din nou')
+        sys.exit()
+
+    ok_db = 1
+    my_cursor = my_db1.cursor()
+    task: str = 'create database tvseries'
+    try:
+        my_cursor.execute(task)
+        print('data de baze a fost creata cu succes')
+    except mysql.connector.Error as error:
+        print(str(error)[0:5] + ' -data de baze exista')
+        ok_db = 0
+    if ok_db == 1:
+        show_db = 'Show databases'
+        my_cursor.execute(show_db)
+        for db in my_cursor:
+            print(db)
+
+
 def create_tb():
-    ok_tv = 1
+    ok_tv: int = 1
     my_cursor = my_db.cursor()
     create_table_tvSeries = 'create table tvSeries_And_Score(id INT(255) UNSIGNED AUTO_INCREMENT PRIMARY KEY, ' \
                             'title varchar(100), ' \
@@ -48,16 +72,15 @@ def create_tb():
         my_cursor.execute(create_table_tvSeries)
         print('-Tabela tv_series_and_score a fost creata cu succes')
     except mysql.connector.Error as the_err:
-        print(the_err)
-        print('-Tabela tv_series_and_score exista')
+        print(str(the_err)[0:5]+'-Tabela tv_series_and_score exista')
         ok_tv = 0
-    if ok_tv == 1: #afisarea tabelelor
+    if ok_tv == 1:  # afisarea tabelelor
         show_tables = 'show tables'
         my_cursor.execute(show_tables)
         for tb in my_cursor:
             print(tb)
-            
-           
+
+
 def create_tb_episodes():
     ok_ep: int = 1
     my_cursor = my_db.cursor()
@@ -67,8 +90,7 @@ def create_tb_episodes():
         my_cursor.execute(create_table_episodes)
         print('-Tabela episodes a fost creata cu succes')
     except mysql.connector.Error as an_err:
-        print(an_err)
-        print('-Tabela episodes exista')
+        print(str(an_err)[0:5]+' -Tabela episodes exista')
         ok_ep = 0
     if ok_ep == 1:
         show_tables = 'show tables'
@@ -97,7 +119,7 @@ def set_score(s):
     score = s[0:score_fin]
     print('score: ' + score)
     s = s[::-1]
-    title = s[10:len(s)-len(score)-1]
+    title = s[10:len(s) - len(score) - 1]
     print('title: ', title)
     if 10 >= int(score) >= 0:
         selectul = "UPDATE tvseries_and_score SET score = %s WHERE title = %s "
@@ -111,7 +133,7 @@ def set_score(s):
             print('succes')
     else:
         print('nota pe care ati acordat-o nu este valida')
-        
+
 
 def set_date(s):
     my_cursor = my_db.cursor()
@@ -125,7 +147,7 @@ def set_date(s):
         isValidDate = False
     now = datetime.datetime.now()
     if isValidDate:
-        if int(now.year)>=int(year) and int(now.month)>=int(month) and int(now.day)>=int(day):
+        if int(now.year) >= int(year) and int(now.month) >= int(month) and int(now.day) >= int(day):
             print("Input date is valid ..")
             selectul = "UPDATE tvseries_and_score SET the_date = %s WHERE title = %s "
             values = (date, title)
@@ -177,7 +199,7 @@ def set_last_episode(s):
     try:
         season = int(season[::-1])
     except ValueError as error:
-        print('Comanda incorecta...Incercati din nou')
+        print(str(error)[0:5]+'Comanda incorecta...Incercati din nou')
         ok_seasons = 0
     if ok_seasons == 1:
         my_cursor = my_db.cursor(buffered=True)
@@ -200,7 +222,7 @@ def set_last_episode(s):
                         try:
                             episode = int(episode[::-1])
                         except ValueError as error:
-                            print('Comanda incorecta...Incercati din nou')
+                            print(str(error)[0:5]+'Comanda incorecta...Incercati din nou')
                             ok_episodes = 0
                         if ok_episodes == 1:
 
@@ -224,7 +246,7 @@ def set_last_episode(s):
                     print('nu exista acest serial in lista')
             my_cursor.close()
         else:
-            print(title1+' nu exista in lista')
+            print(title1 + ' nu exista in lista')
 
 
 def suggestions():
@@ -296,7 +318,7 @@ def get_data(s):  # de verificat daca linkul exists valid
         nr_seasons = int(request[pos_incep_season:pos_sf_seasons])
         print(nr_seasons, ' :nr_seasons')
 
-        score = raw_input('precizati nota: ')
+        score = input('precizati nota: ')
         if score == '':
             score = 0
             print(score)
@@ -310,14 +332,14 @@ def get_data(s):  # de verificat daca linkul exists valid
 
         last_seen_ep = input("precizati ultimul ep vizionat: ")  # de verificat daca e intre 0 si nr de ep aparute pt
         # fiecare sezon
-        date = raw_input('data ultimei vizionari: ')  # de verificat daca e data valida (dupa ce a aparut serialul)
+        date = input('data ultimei vizionari: ')
         # si pana in data curenta
         if date == '':
             date = '0000-00-00'
             print(date)
         else:
             print(date)
-        snoozed = input('vreti sa primiti notificari de episoade noi? ')  # de verificat daca e da sau nu
+        snoozed = input('doriti sa opriti notificarile de episoade noi pentru acest seruial? ')
         my_cursor = my_db.cursor()
         sql_com = "INSERT INTO tvseries_and_score(title,link,score,nr_episodes, nr_seasons, last_seen_episode, " \
                   "the_date, " \
@@ -377,8 +399,11 @@ def execute_command(command):
     else:
         print("nu e buna comanda")
 
-creare_tb()
+
+create_db()
+create_tb()
 create_tb_episodes()
+
 t = TheUpdate()
 t.start()
 # pe de alta parte iau comenzile date de la tastatura si le prelucrez
