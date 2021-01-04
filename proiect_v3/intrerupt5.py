@@ -7,6 +7,8 @@ import re
 import sys
 import datetime
 from bs4 import BeautifulSoup
+from youtubesearchpython import SearchVideos
+import json
 
 try:
     my_db = mysql.connector.connect(host="localhost", user="bia", passwd="bia2", database="tvseries")
@@ -20,26 +22,33 @@ except mysql.connector.Error as err:
 # difera fata de datele din baza de date
 
 # class TheUpdate(threading.Thread):
+#     """Clasa care contine functiile de baza pentru firul de executie"""
 #     def __init__(self):
+#         """ Initializeaza variabila my_timer cu valoarea timpului curent. Nu returneaza nimic."""
 #         super().__init__()
-#         self.my_timer = time.time()  # initializez variabila time la ora curenta
+#         self.my_timer = time.time()
 #
 #     def restart(self):
+#         """ Initializeaza variabila my_timer cu valoarea timpului curent la care se adauga 120 de secunde."""
 #         self.my_timer = time.time() + 120
-#         news()
-#         # variabila my_timer reprezinta ora exacta la care trebuie sa ajunga variabila
-#         # time pentru a face din nou restart
 #
 #     def run(self, *args):
+#         """ Apeleaza functia restart() in momentul in care valoarea variabilei my_timer este mai mica sau egala decat
+#         valoarea timpului curent. Nu returneaza nimic"""
 #         self.restart()
 #         while 1:
 #             if time.time() >= self.my_timer:
-#                 # aici fac verificarile de update ia toate linkurile si verifica cate episoade sunt in toatl pentru
-#                 # fiecare link si le compara cu cele din baza de date
+
 #                 self.restart()  # resetez timpul
 
 
 def create_db():
+    """
+    Se conecteaza la localhostt si daca nu exista exceptii creaza baza de date "tvseries" si afiseaza toate bazele de
+    date existente ale userului.
+    :param:
+    :return:
+    """
     try:
         my_db1 = mysql.connector.connect(host="localhost", user="bia", passwd="bia2")
     except mysql.connector.Error as error:
@@ -64,6 +73,12 @@ def create_db():
 
 
 def create_tb():
+    """
+    Daca nu exista exceptii creaza tabela "tvSeries_And_Score" si afiseaza toate tabelele din baza de date.
+    din baza de date.
+    :param:
+    :return:
+    """
     ok_tv: int = 1
     my_cursor = my_db.cursor()
     create_table_tvSeries = 'create table tvSeries_And_Score(id INT(255) UNSIGNED AUTO_INCREMENT PRIMARY KEY, ' \
@@ -85,6 +100,11 @@ def create_tb():
 
 
 def create_tb_episodes():
+    """
+    Daca nu exista exceptii creaza tabela "episodes" si afiseaza toate tabelele din baza de date.
+    :param:
+    :return:
+    """
     ok_ep: int = 1
     my_cursor = my_db.cursor()
     create_table_episodes = 'create table episodes(id INT(255) UNSIGNED AUTO_INCREMENT PRIMARY KEY, serial int(255), ' \
@@ -103,12 +123,18 @@ def create_tb_episodes():
 
 
 def display_titles():
+    """
+    Afiseaza toate titlurile serialelor ce sunt inregistrate in baza de date. Daca nu exista niciun titlu va afisa
+    mesajul "nu exista titluri adaugate".
+    :param
+    :return:
+    """
     my_cursor = my_db.cursor(buffered=True)
     selectul = 'select * from tvseries_and_score'
     my_cursor.execute(selectul)
     result_set = my_cursor.fetchall()
     if not result_set:
-        print('nu esxista titluri adaugate')
+        print('nu exista titluri adaugate')
     else:
         for row in result_set:
             print(row[1])
@@ -116,6 +142,14 @@ def display_titles():
 
 
 def set_score(s):
+    """
+    Extrage din parametrul primit scorul si titlul, verifica daca scorul e valid. Daca e, face update in baza de date
+    pentru tupla care contine titlul extras cu scorul verificat anterior si afiseaza mesajul "succes". Daca nu s-a
+    facut update, afiseaza mesajul "nu exista serial cu acest titllu in lista". Daca insa scorul nu este valid, afiseaza
+    mesajul "nota pe care ati acordat-o nu este valida"
+    :param s:
+    :return:
+    """
     my_cursor = my_db.cursor()
     s = s[::-1]
     score_fin = re.search(" ", s).span()[0]
@@ -139,6 +173,16 @@ def set_score(s):
 
 
 def set_date(s):
+    """
+    Extrage din parametrul primit data si titlul si verifica daca data e valida prin ransformarea variabilei date din
+    obiect de tip string in obiect de tip datetime. Daca data e valida, verifica sa nu depaseasca data curenta. Daca
+    si acesta conditie e indeplinita, face update in baza de date pentru tupla care contine titlul extras cu data
+    verificata anterior si afiseaza mesajul "succes". Daca update-ul nu s-a realizat, afiseaza mesajul "nu exista serial
+    cu acest titllu in lista sau ati setat deja aceasta data". In cele 2 cazuri ramase in care validarea datei nu s-a
+    realizat cu succes, va afisa mesajul "Data introdusa este invalida".
+    :param s:
+    :return:
+    """
     my_cursor = my_db.cursor()
     title = s[9:len(s) - 11]
     date = s[len(s) - 10:len(s)]
@@ -151,7 +195,6 @@ def set_date(s):
     now = datetime.datetime.now()
     if isValidDate:
         if int(now.year) >= int(year) and int(now.month) >= int(month) and int(now.day) >= int(day):
-            print("Input date is valid ..")
             selectul = "UPDATE tvseries_and_score SET the_date = %s WHERE title = %s "
             values = (date, title)
             my_cursor.execute(selectul, values)
@@ -162,12 +205,20 @@ def set_date(s):
             else:
                 print('succes')
         else:
-            print("Input date is not valid..")
+            print("Data introdusa este invalida")
     else:
-        print("Input date is not valid..")
+        print("Data introdusa este invalida")
 
 
 def set_snooze(s):
+    """
+    Extrage din parametrul primit titlul si variabila snooze. Verifica daca valoarea variabilei snooze este valida.
+    Daca da, face update in baza de date pentru tupla care contine titlul extras cu snooze si afiseaza mesajul "succes".
+    Daca nu a fost realizat update-ul, afiseaza mesajul "nu exista serial cu acest titllu in lista sau ati setat deja
+    aceasta optiune". Daca in schimb variabila snooze este invalida, afiseaza mesajul "input invalid..alegeti da sau nu"
+    :param s:
+    :return:
+    """
     my_cursor = my_db.cursor()
     title = s[11:len(s) - 3]
     snooze = s[len(s) - 2:len(s)]
@@ -182,10 +233,20 @@ def set_snooze(s):
         else:
             print('succes')
     else:
-        print('invalid input...alegeti da sau nu')
+        print('input invalid...alegeti da sau nu')
 
 
 def set_last_episode(s):
+    """
+    Extrage numarul episodului, numarul sezonului si titlul din parametrul primit si verifica daca au fost respectate
+    intructiunile cu privire la forma comenzii. Daca nu au fost respectate, va afisa mesaje corespunzatoare problemei.
+    Daca au fost respectate, verifica daca titlul exista in lista. Daca exista, verifica daca numarul sezonului si
+    numarul episodului sunt valide. Daca sunt, face update in baza de date pentru tupla care contine titlul extras cu
+    sn_and_ep la last_seen_episode. Daca exista conditii care nu au fost indeplinite, va afisa mesaje corespunzatoare
+    problemei intampinate.
+    :param s:
+    :return:
+    """
     ok_seasons = 1
     ok_episodes = 1
     s = s[::-1]  # oglinditul lui s
@@ -253,6 +314,14 @@ def set_last_episode(s):
 
 
 def suggestions():
+    """
+    Afiseaza in ordine descrescatoare dupa scor toate titurile impreuna cu scorul si ultimul episod vizionat. Daca un
+    serial nu are setat ultimul episod vizionat atunci afiseaza mesajul "acest serial nu are setat ultimul episod
+    vizionat... incercati comanda set_last episode". Daca nu exista niciun serial in lista, afiseaza mesajul "nu se pot
+    face sugestii...nu exista niciun serial in lista"
+    :param:
+    :return:
+    """
     my_cursor = my_db.cursor(buffered=True)
     selectul = "select title, score from tvseries_and_score order by score desc "
     my_cursor.execute(selectul)
@@ -285,10 +354,39 @@ def suggestions():
 
 
 def instructions():
-    print('INSTRUCTIONS:')
+    """
+    Afiseaza toate modurile in care pot fi preluate corect comenzile date de catre utilizator de la tastatura
+    :param:
+    :return:
+    """
+    print('INSTRUCTIUNI:')
+    print('1. display -Afisea toate titlurile pe care le-ati salvat pana acum.')
+    print('2. *link_pentru_un_serial_de_pe_imbd* -Linkul trebuie sa inceapa cu "https://www.imdb.com"')
+    print('3. set_score *titlu_serial* -Seteaza scorul pentru serialul dorit. Scorul trebuie sa fie un numar intrg '
+          'intre 0 si 10. ')
+    print('4. set_last_episode *titlu_serial* s*x*e*y* -Seteaza ultimul episod vizionat pentru serialul dorit. '
+          'x-reprezinta numaru sezonului, y-reprezinta numarul episodului')
+    print('5. set_date *titlu_serial* *yyyy-mm-dd* -Seteaza data ultimei vizionari pentru serialul dorit.')
+    print('6. set_snooze *titlu_serial* *da/nu* -Hotaraste daca ati anulat sau nu notificarile pentru episoade noi '
+          'pentru un anumit serial')
+    print('7. suggestions -Afiseaza in ordine descrescatoare, in functie de nota, toate serialele si ultimul episod '
+          'vizionat pentru fiecare dintre ele')
+    print('8. news -verifica pentru toate serialele care au snoozed setat pe nu daca au aparut episoade noi')
+    print('9. yt *target* -Cauta pe YouTube ce este in target si returneaza link-ul pentru primul videoclip gasit.')
 
 
 def get_data(s):
+    """
+    Verifica daca link-ul primit ca parametru este valid si extrage din request titlul. Daca titlul a mai fost adaugat 
+    o data in baza de date, afiseaza mesajul acest serial a mai fost adaugat o data". In caz contrar, extrage id-ul 
+    de pe site al serialului si numarul de episoade. Daca site-ul nu e in forma corecta cu numarul de episoade in partea
+    stanga a paginii, afiseaza mesajul "eroare la obtinerea numarului de episoade... verificati pagina". Daca numarul 
+    de episoade a fost extras corect, extrage numerul de sezoane si asteapta input pentr scor, ultimul episod vazut, 
+    data si snoozed. Insereaza titlul, numarul de episoade, numarul de sezoane si datele mentionate anterior in tabela
+    si pentru fiecare sezon introduce episoadele in tabela episodes.
+    :param s: 
+    :return: 
+    """
     ok_ep = 1
     request = requests.get(s)
     if request.status_code == 200:
@@ -351,7 +449,7 @@ def get_data(s):
                     print(date)
                 else:
                     print(date)
-                snoozed = input('doriti sa opriti notificarile de episoade noi pentru acest seruial? ')
+                snoozed = input('doriti sa opriti notificarile de episoade noi pentru acest serial? ')
                 my_cursor = my_db.cursor()
                 sql_com = "INSERT INTO tvseries_and_score(title,link,score,nr_episodes, nr_seasons, " \
                           "last_seen_episode, the_date, snoozed) VALUES (%s,%s,%s,%s,%s,%s,%s,%s) "
@@ -393,52 +491,77 @@ def get_data(s):
 
 
 def news():
+    """
+    Verifica daca exista seriale care au optiunea snoozed pe nu si cauta pentru ele daca numarul de episoade de pe site
+    corespunde cu numarul de episoade din baza de date. In caz afirmativ, sterge tupla corespunzatoare serialului din
+    tabela tvseries_and_score si toate episoadele din tabela episodes si apeleaza functia get_data cu  parametru fiind
+    link-ul filmului. In cazul in care nu exista filme in baza de date, afiseaza mesajul "lista e goala".
+    :param:
+    :return:
+    """
     my_cursor = my_db.cursor()
-    task = 'select nr_episodes, link, id, title from tvseries_and_score'
+    task = 'select nr_episodes, link, id, snoozed title from tvseries_and_score'
     my_cursor.execute(task)
     result_set = my_cursor.fetchall()
     if len(result_set) != 0:
         for result in result_set:
-            request = requests.get(result[1])
-            if request.status_code == 200:  # iau fiecare link si verific daca e valid
-                url = get(result[1])
-                request = url.text
-                pos_incep_nr_ep = re.search('<span class="bp_sub_heading">', request).span()[1]
-                pos_sf_nr_ep = re.search('episodes</span>', request).span()[0] - 1  # am eliminat spatiul de dupa nr
-                nr_of_ep = request[pos_incep_nr_ep:pos_sf_nr_ep]
-                if int(nr_of_ep) == int(result[0]):  # verificam daca e acelasi nr de episoade ca cele din baza de date
-                    print('nimic nou')
-                else:
-                    print(result[3], '- are episoade noi aparute')
-                    my_cursor = my_db.cursor()
-                    task = 'delete from tvseries_and_score where link= %s'
-                    info = (result[1],)
-                    my_cursor.execute(task, info)
-                    my_db.commit()
-                    task = 'delete from episodes where serial = %s'
-                    info = (result[2],)
-                    my_cursor.execute(task, info)
-                    my_db.commit()
-                    get_data(result[1])
+            if result[3] == "nu":
+                request = requests.get(result[1])
+                if request.status_code == 200:  # iau fiecare link si verific daca e valid
+                    url = get(result[1])
+                    request = url.text
+                    pos_incep_nr_ep = re.search('<span class="bp_sub_heading">', request).span()[1]
+                    pos_sf_nr_ep = re.search('episodes</span>', request).span()[0] - 1  # am eliminat spatiul de dupa nr
+                    nr_of_ep = request[pos_incep_nr_ep:pos_sf_nr_ep]
+                    if int(nr_of_ep) == int(
+                            result[0]):  # verificam daca e acelasi nr de episoade ca cele din baza de date
+                        print('nimic nou')
+                    else:
+                        print(result[3], '- are episoade noi aparute')
+                        my_cursor = my_db.cursor()
+                        task = 'delete from tvseries_and_score where link= %s'
+                        info = (result[1],)
+                        my_cursor.execute(task, info)
+                        my_db.commit()
+                        task = 'delete from episodes where serial = %s'
+                        info = (result[2],)
+                        my_cursor.execute(task, info)
+                        my_db.commit()
+                        get_data(result[1])
 
+                else:
+                    print('link-ul nu mai e valid')
             else:
-                print('link-ul nu mai e valid')
+                print('nimic nou')
     else:
         print('lista e goala')
-        
-        
+
+
 def youtube(s):
-    target=s[3:len(s)]
+    """
+    Extrege din parametrul primit cuvintele ce reprezinta stringul de cautare in variabila target si cauta continutul
+    pe YouTube. Intoarce rezultatul sub forma unui json si il converteste intr-un dictionar din care selecteaza si
+    afiseaza numai link-ul primului rezultat gasit.
+    :param s:
+    :return:
+    """
+    target = s[3:len(s)]
     search = SearchVideos(target, offset=1, mode="json", max_results=20)
     if search.result() is not None:
-        dict = json.loads(search.result())
-        print(dict)
-        print(dict['search_result'][0]['link'])
+        dict_search = json.loads(search.result())
+        print(dict_search)
+        print(dict_search['search_result'][0]['link'])
     else:
         print('nu exista videoclipuri pentru aceasta cautare')
 
 
 def execute_command(command):
+    """
+    Verifica daca parametrul primit la intrare reprezinta in intregime sau partial o comanda ce poate fi data de
+    utilizator de la tastatura. Daca nu se potriveste cu nicio optiune, afiseaza mesajul "nu e buna comanda"
+    :param command:
+    :return:
+    """
     if command == 'display':
         display_titles()
     elif command[0:20] == 'https://www.imdb.com':
@@ -451,14 +574,16 @@ def execute_command(command):
         set_date(command)
     elif command[0:10] == 'set_snooze':
         set_snooze(command)
-    elif command[0:11] == 'suggestions':
+    elif command == 'suggestions':
         suggestions()
-    elif command[0:12] == 'instructions':
+    elif command == 'instructions':
         instructions()
-    elif command[0:4] == 'news':
+    elif command == 'news':
         news()
-    elif command[0:4] == 'yt':
-        youtube()
+    elif command[0:2] == 'yt':
+        youtube(command)
+    elif command == 'quit':
+        sys.exit()
     else:
         print("nu e buna comanda")
 
