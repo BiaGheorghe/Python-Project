@@ -419,106 +419,112 @@ def get_data(s):
     :return:
     """
     ok_ep = 1
-    request = requests.get(s)
-    if request.status_code == 200:
-        print('Web site exists')
-        resultant: int = 0  # l-am initializat cu 0 pentru a nu mai avea warning la id
-        url = get(s)
-        request = url.text
+    ok_req = 1
+    try:
+        request = requests.get(s)
+    except ValueError as error:
+        print(str(error)[0:5] + 'eroare la request')
+        ok_req = 0
+    if ok_req:
+        if request.status_code == 200:
+            print('Web site exists')
+            resultant: int = 0  # l-am initializat cu 0 pentru a nu mai avea warning la id
+            url = get(s)
+            request = url.text
 
-        pos_incep_titlu = re.search('<h1 class="">', url.text).span()[1]
-        pos_sf_titlu = re.search('</h1>', url.text).span()[0] - 18  # eliminam caracterele de la titlu pana la </h1>
-        title = request[pos_incep_titlu:pos_sf_titlu]
-        print(title)
+            pos_incep_titlu = re.search('<h1 class="">', url.text).span()[1]
+            pos_sf_titlu = re.search('</h1>', url.text).span()[0] - 18  # eliminam caracterele de la titlu pana la </h1>
+            title = request[pos_incep_titlu:pos_sf_titlu]
+            print(title)
 
-        my_cursor1 = my_db.cursor()
-        selectul = 'select title from tvseries_and_score'
-        my_cursor1.execute(selectul)
-        result_set = my_cursor1.fetchall()
-        exists: int = 0
-        for result in result_set:
-            if result[0] == title:  # verificam daca a mai fost adaugat o data
-                exists = 1
+            my_cursor1 = my_db.cursor()
+            selectul = 'select title from tvseries_and_score'
+            my_cursor1.execute(selectul)
+            result_set = my_cursor1.fetchall()
+            exists: int = 0
+            for result in result_set:
+                if result[0] == title:  # verificam daca a mai fost adaugat o data
+                    exists = 1
 
-        if exists == 0:
-            id_film = s[27:36]
-            print(id_film, ':id  film')
+            if exists == 0:
+                id_film = s[27:36]
+                print(id_film, ':id  film')
 
-            pos_incep_nr_ep = re.search('<span class="bp_sub_heading">', url.text).span()[1]
-            pos_sf_nr_ep = re.search('episodes</span>', url.text).span()[0] - 1  # am eliminat spatiul de dupa nr
-            nr_of_ep = request[pos_incep_nr_ep:pos_sf_nr_ep]
-            try:
-                print(int(nr_of_ep), ' :episoade')
-            except ValueError as error:
-                print(str(error)[0:5] + 'eroare la obtinerea numarului de episoade... verificati pagina ')
-                ok_ep = 0
-            if ok_ep == 1:
-                pos_incep_season = re.search('season=', url.text).span()[1]
-                pos_sf_seasons = re.search('&nbsp;&nbsp;', url.text).span()[0] - 8
-                nr_seasons = int(request[pos_incep_season:pos_sf_seasons])
-                print(nr_seasons, ' :nr_seasons')
+                pos_incep_nr_ep = re.search('<span class="bp_sub_heading">', url.text).span()[1]
+                pos_sf_nr_ep = re.search('episodes</span>', url.text).span()[0] - 1  # am eliminat spatiul de dupa nr
+                nr_of_ep = request[pos_incep_nr_ep:pos_sf_nr_ep]
+                try:
+                    print(int(nr_of_ep), ' :episoade')
+                except ValueError as error:
+                    print(str(error)[0:5] + 'eroare la obtinerea numarului de episoade... verificati pagina ')
+                    ok_ep = 0
+                if ok_ep == 1:
+                    pos_incep_season = re.search('season=', url.text).span()[1]
+                    pos_sf_seasons = re.search('&nbsp;&nbsp;', url.text).span()[0] - 8
+                    nr_seasons = int(request[pos_incep_season:pos_sf_seasons])
+                    print(nr_seasons, ' :nr_seasons')
 
-                score = input('precizati nota: ')
-                if score == '':
-                    score = 0
-                    print(score)
-                else:
-                    score_aux = int(score)
-                    if (score_aux <= 10) and (0 <= score_aux):
-                        score = score_aux
+                    score = input('precizati nota: ')
+                    if score == '':
+                        score = 0
                         print(score)
                     else:
-                        score = 0
+                        score_aux = int(score)
+                        if (score_aux <= 10) and (0 <= score_aux):
+                            score = score_aux
+                            print(score)
+                        else:
+                            score = 0
 
-                last_seen_ep = input(
-                    "precizati ultimul ep vizionat: ")  # de verificat daca e intre 0 si nr de ep aparute pt
-                # fiecare sezon
-                date = input('data ultimei vizionari: ')
-                # si pana in data curenta
-                if date == '':
-                    date = '0000-00-00'
-                    print(date)
-                else:
-                    print(date)
-                snoozed = input('doriti sa opriti notificarile de episoade noi pentru acest serial? ')
-                my_cursor = my_db.cursor()
-                sql_com = "INSERT INTO tvseries_and_score(title,link,score,nr_episodes, nr_seasons, " \
-                          "last_seen_episode, the_date, snoozed) VALUES (%s,%s,%s,%s,%s,%s,%s,%s) "
-                tv_series = [(title, s, score, nr_of_ep, nr_seasons, last_seen_ep, date, snoozed)]
-                my_cursor.executemany(sql_com, tv_series)
-                my_db.commit()
-
-                my_cursor = my_db.cursor()
-                selectul = 'select id from tvseries_and_score where title=title'
-                my_cursor.execute(selectul)
-                result_set = my_cursor.fetchall()
-                for result in result_set:
-                    resultant = result[0]  # resultant sigur exista deroarece reprezinta id-ul serialului tocmai
-                    # adaugat in baza de date
-
-                for i in range(0, nr_seasons):
-                    link = 'https://www.imdb.com/title/' + id_film + '/episodes?season=' + str(
-                        i + 1) + '&ref_=tt_eps_sn_' + str(i + 1)
-                    print(link, ':link')
-                    url1 = get(link)
-                    request1 = url1.text
-                    soup = BeautifulSoup(request1, 'html.parser')
-                    eptags = soup.select('strong')  # titlurile episoadelor
-                    titles = [tag.text for tag in eptags]
-                    j: int = 0
-                    sql_com = "INSERT INTO episodes(serial, season, episode, title) VALUES (%s,%s,%s,%s) "
+                    last_seen_ep = input(
+                        "precizati ultimul ep vizionat: ")  # de verificat daca e intre 0 si nr de ep aparute pt
+                    # fiecare sezon
+                    date = input('data ultimei vizionari: ')
+                    # si pana in data curenta
+                    if date == '':
+                        date = '0000-00-00'
+                        print(date)
+                    else:
+                        print(date)
+                    snoozed = input('doriti sa opriti notificarile de episoade noi pentru acest serial? ')
                     my_cursor = my_db.cursor()
-                    while titles[j] != 'Season ' + str(i + 1):
-                        print('serial: ', resultant, 'season: ', i + 1, 'ep: ', j + 1, 'nume: ', titles[j])
-                        info = [(resultant, i + 1, j + 1, titles[j])]
-                        my_cursor.executemany(sql_com, info)
-                        my_db.commit()
-                        j = j + 1
+                    sql_com = "INSERT INTO tvseries_and_score(title,link,score,nr_episodes, nr_seasons, " \
+                              "last_seen_episode, the_date, snoozed) VALUES (%s,%s,%s,%s,%s,%s,%s,%s) "
+                    tv_series = [(title, s, score, nr_of_ep, nr_seasons, last_seen_ep, date, snoozed)]
+                    my_cursor.executemany(sql_com, tv_series)
+                    my_db.commit()
 
+                    my_cursor = my_db.cursor()
+                    selectul = 'select id from tvseries_and_score where title=title'
+                    my_cursor.execute(selectul)
+                    result_set = my_cursor.fetchall()
+                    for result in result_set:
+                        resultant = result[0]  # resultant sigur exista deroarece reprezinta id-ul serialului tocmai
+                        # adaugat in baza de date
+
+                    for i in range(0, nr_seasons):
+                        link = 'https://www.imdb.com/title/' + id_film + '/episodes?season=' + str(
+                            i + 1) + '&ref_=tt_eps_sn_' + str(i + 1)
+                        print(link, ':link')
+                        url1 = get(link)
+                        request1 = url1.text
+                        soup = BeautifulSoup(request1, 'html.parser')
+                        eptags = soup.select('strong')  # titlurile episoadelor
+                        titles = [tag.text for tag in eptags]
+                        j: int = 0
+                        sql_com = "INSERT INTO episodes(serial, season, episode, title) VALUES (%s,%s,%s,%s) "
+                        my_cursor = my_db.cursor()
+                        while titles[j] != 'Season ' + str(i + 1):
+                            print('serial: ', resultant, 'season: ', i + 1, 'ep: ', j + 1, 'nume: ', titles[j])
+                            info = [(resultant, i + 1, j + 1, titles[j])]
+                            my_cursor.executemany(sql_com, info)
+                            my_db.commit()
+                            j = j + 1
+
+            else:
+                print("acest serial a mai fost adaugat o data")
         else:
-            print("acest serial a mai fost adaugat o data")
-    else:
-        print('Web site does not exist')
+            print('Web site does not exist')
 
 
 def news():
@@ -536,33 +542,40 @@ def news():
     result_set = my_cursor.fetchall()
     if len(result_set) != 0:
         for result in result_set:
-            if result[3] == "":  # try
-                request = requests.get(result[1])
-                if request.status_code == 200:  # iau fiecare link si verific daca e valid
-                    url = get(result[1])
-                    request = url.text
-                    pos_incep_nr_ep = re.search('<span class="bp_sub_heading">', request).span()[1]
-                    pos_sf_nr_ep = re.search('episodes</span>', request).span()[0] - 1  # am eliminat spatiul de dupa nr
-                    nr_of_ep = request[pos_incep_nr_ep:pos_sf_nr_ep]
-                    print(nr_of_ep, result[0])
-                    if int(nr_of_ep) == int(
-                            result[0]):  # verificam daca e acelasi nr de episoade ca cele din baza de date
-                        print('nimic nou')
-                    else:
-                        print(result[3], '- are episoade noi aparute')
-                        my_cursor = my_db.cursor()
-                        task = 'delete from tvseries_and_score where link= %s'
-                        info = (result[1],)
-                        my_cursor.execute(task, info)
-                        my_db.commit()
-                        task = 'delete from episodes where serial = %s'
-                        info = (result[2],)
-                        my_cursor.execute(task, info)
-                        my_db.commit()
-                        get_data(result[1])
+            if result[3] == "":
+                ok_req = 1
+                try:
+                    request = requests.get(result[1])
+                except ValueError as eroare:
+                    print(str(eroare)[0:5] + 'eroare la request')
+                    ok_req = 0
+                if ok_req:
+                    if request.status_code == 200:  # iau fiecare link si verific daca e valid
+                        url = get(result[1])
+                        request = url.text
+                        pos_incep_nr_ep = re.search('<span class="bp_sub_heading">', request).span()[1]
+                        pos_sf_nr_ep = re.search('episodes</span>', request).span()[0] - 1  # am eliminat spatiul de
+                        # dupa nr
+                        nr_of_ep = request[pos_incep_nr_ep:pos_sf_nr_ep]
+                        print(nr_of_ep, result[0])
+                        if int(nr_of_ep) == int(
+                                result[0]):  # verificam daca e acelasi nr de episoade ca cele din baza de date
+                            print('nimic nou')
+                        else:
+                            print(result[3], '- are episoade noi aparute')
+                            my_cursor = my_db.cursor()
+                            task = 'delete from tvseries_and_score where link= %s'
+                            info = (result[1],)
+                            my_cursor.execute(task, info)
+                            my_db.commit()
+                            task = 'delete from episodes where serial = %s'
+                            info = (result[2],)
+                            my_cursor.execute(task, info)
+                            my_db.commit()
+                            get_data(result[1])
 
-                else:
-                    print('link-ul nu mai e valid')
+                    else:
+                        print('link-ul nu mai e valid')
             else:
                 print('e pe snooze')
     else:
