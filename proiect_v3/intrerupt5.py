@@ -250,7 +250,38 @@ def set_snooze(s):
         print('input invalid...alegeti da sau nu')
 
 
-def set_last_episode(s):
+def extract(s):
+    result = []
+    s = s[::-1]  # oglinditul lui s
+    ep_incep = re.search('e', s).span()[0]
+    episode = s[0:ep_incep]
+    episode = episode[::-1]
+    print('episode- ', episode)
+    sn_incep = re.search('s', s).span()[0]
+    season = s[ep_incep + 1:sn_incep]
+    print('sezon-', season)
+    s = s[::-1]
+    if s[0:2] == 'yt':
+        title1 = s[3:len(s) - (len(episode) + len(season) + 3)]
+    else:
+        title1 = s[17:len(s) - (len(episode) + len(season) + 3)]
+    print(title1)
+    result.append(title1)
+    result.append(season)
+    result.append(episode)
+    return result
+
+
+def nr_ep_per_season(id_serial, season):
+    my_cursor3 = my_db.cursor(buffered=True)
+    task = 'select id from episodes WHERE serial = %s and season= %s'  # nr cate ep are sezonul
+    info1 = (id_serial, season)  # id-ul filmului si sezonul
+    my_cursor3.execute(task, info1)
+    result_set1 = my_cursor3.fetchall()
+    return len(result_set1)
+
+
+def set_last_episode(s):  # comentarii parametri
     """
     Extrage numarul episodului, numarul sezonului si titlul din parametrul primit, le afiseaza si verifica daca au fost
     respectate  intructiunile cu privire la forma comenzii. Daca nu au fost respectate, va afisa mesaje corespunzatoare
@@ -263,68 +294,54 @@ def set_last_episode(s):
     """
     ok_seasons = 1
     ok_episodes = 1
-    s = s[::-1]  # oglinditul lui s
-    ep_incep = re.search('e', s).span()[0]
-    episode = s[0:ep_incep]
-    episode = episode[::-1]
-    print('episode- ', episode)
-    sn_incep = re.search('s', s).span()[0]
-    season = s[ep_incep + 1:sn_incep]
-    print('sezon-', season)
-    s = s[::-1]
-    title1 = s[17:len(s) - (len(episode) + len(season) + 3)]
-    print(title1)
+    result_extract = extract(s)
     try:
-        season = int(season[::-1])
+        result_extract[1] = int(result_extract[1][::-1])
     except ValueError as error:
         print(str(error)[0:5] + '\nComanda incorecta...Incercati din nou')
         ok_seasons = 0
     if ok_seasons == 1:
         my_cursor = my_db.cursor(buffered=True)
-        selectul = 'select nr_seasons, id from tvseries_and_score where title = %s'
-        info = (title1,)
-        my_cursor.execute(selectul, info)
+        task = 'select nr_seasons, id from tvseries_and_score where title = %s'
+        info = (result_extract[0],)
+        my_cursor.execute(task, info)
         result_set = my_cursor.fetchall()
         if len(result_set) != 0:
             for result in result_set:
                 if result[0] != '':
                     print('result1: ------', result[0], '--------', result[1])
-                    if 1 <= season <= int(
+                    if 1 <= result_extract[1] <= int(
                             result[0]):  # daca nr de sezoane dat este mai mic sau egal cu nr de sez ale serial
-                        my_cursor1 = my_db.cursor(buffered=True)
-                        selectul1 = 'select id from episodes WHERE serial = %s and season= %s'  # nr cate ep are sezonul
-                        info1 = (result[1], season)  # id-ul filmului si sezonul
-                        my_cursor1.execute(selectul1, info1)
-                        result_set1 = my_cursor1.fetchall()
-
+                        size_result = nr_ep_per_season(result[1], result_extract[1])
                         try:
-                            episode = int(episode[::-1])
+                            result_extract[2] = int(result_extract[2][::-1])
                         except ValueError as error:
                             print(str(error)[0:5] + 'Comanda incorecta...Incercati din nou')
                             ok_episodes = 0
                         if ok_episodes == 1:
 
-                            if 1 <= episode <= len(result_set1):
-                                sn_and_ep = 's' + str(season) + 'e' + str(episode)
+                            if 1 <= result_extract[2] <= size_result:
+                                sn_and_ep = 's' + str(result_extract[1]) + 'e' + str(result_extract[2])
                                 my_cursor2 = my_db.cursor(buffered=True)
-                                selectul2 = "UPDATE tvseries_and_score SET last_seen_episode = %s WHERE title = %s "
-                                values = (sn_and_ep, title1)
-                                my_cursor2.execute(selectul2, values)
+                                task = "UPDATE tvseries_and_score SET last_seen_episode = %s WHERE title = %s "
+                                values = (sn_and_ep, result_extract[0])
+                                my_cursor2.execute(task, values)
                                 my_db.commit()
-                                rowsaffected = my_cursor2.rowcount
-                                if rowsaffected == 0:
+                                rows_affected = my_cursor2.rowcount
+                                if rows_affected == 0:
                                     print("nu exista serial cu acest titllu in lista sau ati setat deja acest episod")
                                 else:
                                     print('succes')
                             else:
-                                print('nu exista episodul cu nr ' + str(episode) + ' in sezonul ' + str(season))
+                                print('nu exista episodul cu nr ' + str(result_extract[2]) + ' in sezonul ' + str(
+                                    result_extract[1]))
                     else:
-                        print('nu exista sezonul cu numarul ' + str(season))
+                        print('nu exista sezonul cu numarul ' + str(result_extract[1]))
                 else:
                     print('nu exista acest serial in lista')
             my_cursor.close()
         else:
-            print(title1 + ' nu exista in lista')
+            print(result_extract[0] + ' nu exista in lista')
 
 
 def suggestions():
@@ -398,7 +415,7 @@ def get_data(s):
     verificati pagina". Daca numarul de episoade a fost extras corect, il afiseaza, extrage numerul de sezoane si
     asteapta input pentr scor, ultimul episod vazut, data si snoozed. Insereaza titlul, numarul de episoade, numarul de
     sezoane si datele mentionate anterior in tabela si pentru fiecare sezon introduce episoadele in tabela episodes.
-    :param s:
+    :param s: link
     :return:
     """
     ok_ep = 1
@@ -519,7 +536,7 @@ def news():
     result_set = my_cursor.fetchall()
     if len(result_set) != 0:
         for result in result_set:
-            if result[3] == "nu":
+            if result[3] == "":  # try
                 request = requests.get(result[1])
                 if request.status_code == 200:  # iau fiecare link si verific daca e valid
                     url = get(result[1])
@@ -527,6 +544,7 @@ def news():
                     pos_incep_nr_ep = re.search('<span class="bp_sub_heading">', request).span()[1]
                     pos_sf_nr_ep = re.search('episodes</span>', request).span()[0] - 1  # am eliminat spatiul de dupa nr
                     nr_of_ep = request[pos_incep_nr_ep:pos_sf_nr_ep]
+                    print(nr_of_ep, result[0])
                     if int(nr_of_ep) == int(
                             result[0]):  # verificam daca e acelasi nr de episoade ca cele din baza de date
                         print('nimic nou')
@@ -546,12 +564,12 @@ def news():
                 else:
                     print('link-ul nu mai e valid')
             else:
-                print('nimic nou')
+                print('e pe snooze')
     else:
         print('lista e goala')
 
 
-def youtube(s):
+def youtube(s):  # verif exista
     """
     Extrege din parametrul primit cuvintele ce reprezinta stringul de cautare in variabila target si cauta continutul
     pe YouTube. Intoarce rezultatul sub forma unui json si il converteste intr-un dictionar din care selecteaza si
@@ -559,14 +577,54 @@ def youtube(s):
     :param s:
     :return:
     """
-    target = s[3:len(s)]
-    search = SearchVideos(target, offset=1, mode="json", max_results=20)
-    if search.result() is not None:
-        dict_search = json.loads(search.result())
-        print(dict_search)
-        print(dict_search['search_result'][0]['link'])
-    else:
-        print('nu exista videoclipuri pentru aceasta cautare')
+    ok_seasons = 1
+    ok_episodes = 1
+    result_extract = extract(s)
+    try:
+        result_extract[1] = int(result_extract[1][::-1])
+    except ValueError as error:
+        print(str(error)[0:5] + '\nComanda incorecta...Incercati din nou')
+        ok_seasons = 0
+    if ok_seasons == 1:
+        my_cursor = my_db.cursor(buffered=True)
+        task = 'select nr_seasons, id from tvseries_and_score where title = %s'
+        info = (result_extract[0],)
+        my_cursor.execute(task, info)
+        result_set = my_cursor.fetchall()
+        if len(result_set) != 0:
+            for result in result_set:
+                if result[0] != '':
+                    print('result1: ------', result[0], '--------', result[1])
+                    if 1 <= result_extract[1] <= int(
+                            result[0]):  # daca nr de sezoane dat este mai mic sau egal cu nr de sez ale serial
+                        size_result = nr_ep_per_season(result[1], result_extract[1])
+                        try:
+                            result_extract[2] = result_extract[2][::-1]
+                            result_extract[2] = int(result_extract[2])
+                        except ValueError as error:
+                            print(str(error)[0:5] + 'Comanda incorecta')
+                            ok_episodes = 0
+                        if ok_episodes == 1:
+
+                            if 1 <= result_extract[2] <= size_result:
+                                sn_and_ep = 's' + str(result_extract[1]) + 'e' + str(result_extract[2])
+                                target = result_extract[0] + ' ' + sn_and_ep
+                                search = SearchVideos(target, offset=1, mode="json", max_results=20)
+                                if search.result() is not None:
+                                    dict_search = json.loads(search.result())
+                                    print(dict_search['search_result'][0]['link'])
+                                else:
+                                    print('nu exista videoclipuri pentru aceasta cautare')
+                            else:
+                                print('nu exista episodul cu nr ' + str(result_extract[2]) + ' in sezonul ' + str(
+                                    result_extract[1]))
+                    else:
+                        print('nu exista sezonul cu numarul ' + str(result_extract[1]))
+                else:
+                    print('nu exista acest serial in lista')
+            my_cursor.close()
+        else:
+            print(result_extract[0] + ' nu exista in lista')
 
 
 def execute_command(command):
