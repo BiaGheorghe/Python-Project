@@ -152,24 +152,31 @@ def set_score(s):
     """
     my_cursor = my_db.cursor()
     s = s[::-1]
-    score_fin = re.search(" ", s).span()[0]
-    score = s[0:score_fin]
-    print('score: ' + score)
-    s = s[::-1]
-    title = s[10:len(s) - len(score) - 1]
-    print('title: ', title)
-    if 10 >= int(score) >= 0:
-        selectul = "UPDATE tvseries_and_score SET score = %s WHERE title = %s "
-        values = (score, title)
-        my_cursor.execute(selectul, values)
-        my_db.commit()
-        rowsaffected = my_cursor.rowcount
-        if rowsaffected == 0:
-            print("nu exista serial cu acest titllu in lista")
+    scor_valid = True
+    score = None
+    try:
+        score_fin = re.search(" ", s).span()[0]
+        score = int(s[0:score_fin])
+    except ValueError:
+        print('nu ati introdus scorul')
+        scor_valid = False
+    if scor_valid:
+        print('score: ' + str(score))
+        s = s[::-1]
+        title = s[10:len(s) - len(str(score)) - 1]
+        print('title: ', title)
+        if 10 >= score >= 0:
+            selectul = "UPDATE tvseries_and_score SET score = %s WHERE title = %s "
+            values = (score, title)
+            my_cursor.execute(selectul, values)
+            my_db.commit()
+            rowsaffected = my_cursor.rowcount
+            if rowsaffected == 0:
+                print("nu exista serial cu acest titllu in lista")
+            else:
+                print('succes')
         else:
-            print('succes')
-    else:
-        print('nota pe care ati acordat-o nu este valida')
+            print('nota pe care ati acordat-o nu este valida')
 
 
 def set_date(s):
@@ -186,28 +193,35 @@ def set_date(s):
     my_cursor = my_db.cursor()
     title = s[9:len(s) - 11]
     date = s[len(s) - 10:len(s)]
-    year, month, day = date.split('-')
-    isValidDate = True
+    data_introdusa = True
+    year, month, day = None, None, None
     try:
-        date = datetime.datetime(int(year), int(month), int(day))
+        year, month, day = date.split('-')
     except ValueError:
-        isValidDate = False
-    now = datetime.datetime.now()
-    if isValidDate:
-        if int(now.year) >= int(year) and int(now.month) >= int(month) and int(now.day) >= int(day):
-            selectul = "UPDATE tvseries_and_score SET the_date = %s WHERE title = %s "
-            values = (date, title)
-            my_cursor.execute(selectul, values)
-            my_db.commit()
-            rowsaffected = my_cursor.rowcount
-            if rowsaffected == 0:
-                print("nu exista serial cu acest titllu in lista sau ati setat deja aceasta data")
+        print('nu ati introdus data corect')
+        data_introdusa = False
+    if data_introdusa:
+        isValidDate = True
+        try:
+            date = datetime.datetime(int(year), int(month), int(day))
+        except ValueError:
+            isValidDate = False
+        now = datetime.datetime.now()
+        if isValidDate:
+            if int(now.year) >= int(year):
+                selectul = "UPDATE tvseries_and_score SET the_date = %s WHERE title = %s "
+                values = (date, title)
+                my_cursor.execute(selectul, values)
+                my_db.commit()
+                rowsaffected = my_cursor.rowcount
+                if rowsaffected == 0:
+                    print("nu exista serial cu acest titllu in lista sau ati setat deja aceasta data")
+                else:
+                    print('succes')
             else:
-                print('succes')
+                print("Data introdusa este invalida")
         else:
             print("Data introdusa este invalida")
-    else:
-        print("Data introdusa este invalida")
 
 
 def set_snooze(s):
@@ -238,12 +252,12 @@ def set_snooze(s):
 
 def set_last_episode(s):
     """
-    Extrage numarul episodului, numarul sezonului si titlul din parametrul primit si verifica daca au fost respectate
-    intructiunile cu privire la forma comenzii. Daca nu au fost respectate, va afisa mesaje corespunzatoare problemei.
-    Daca au fost respectate, verifica daca titlul exista in lista. Daca exista, verifica daca numarul sezonului si
-    numarul episodului sunt valide. Daca sunt, face update in baza de date pentru tupla care contine titlul extras cu
-    sn_and_ep la last_seen_episode. Daca exista conditii care nu au fost indeplinite, va afisa mesaje corespunzatoare
-    problemei intampinate.
+    Extrage numarul episodului, numarul sezonului si titlul din parametrul primit, le afiseaza si verifica daca au fost
+    respectate  intructiunile cu privire la forma comenzii. Daca nu au fost respectate, va afisa mesaje corespunzatoare
+    problemei. Daca au fost respectate, verifica daca titlul exista in lista. Daca exista, verifica daca numarul
+    sezonului si numarul episodului sunt valide. Daca sunt, face update in baza de date pentru tupla care contine titlul
+    extras cu valoarea variabilei sn_and_ep la last_seen_episode. Daca exista conditii care nu au fost indeplinite,
+    va afisa mesaje corespunzatoare problemei intampinate.
     :param s:
     :return:
     """
@@ -263,7 +277,7 @@ def set_last_episode(s):
     try:
         season = int(season[::-1])
     except ValueError as error:
-        print(str(error)[0:5] + 'Comanda incorecta...Incercati din nou')
+        print(str(error)[0:5] + '\nComanda incorecta...Incercati din nou')
         ok_seasons = 0
     if ok_seasons == 1:
         my_cursor = my_db.cursor(buffered=True)
@@ -377,15 +391,15 @@ def instructions():
 
 def get_data(s):
     """
-    Verifica daca link-ul primit ca parametru este valid si extrage din request titlul. Daca titlul a mai fost adaugat 
-    o data in baza de date, afiseaza mesajul acest serial a mai fost adaugat o data". In caz contrar, extrage id-ul 
-    de pe site al serialului si numarul de episoade. Daca site-ul nu e in forma corecta cu numarul de episoade in partea
-    stanga a paginii, afiseaza mesajul "eroare la obtinerea numarului de episoade... verificati pagina". Daca numarul 
-    de episoade a fost extras corect, extrage numerul de sezoane si asteapta input pentr scor, ultimul episod vazut, 
-    data si snoozed. Insereaza titlul, numarul de episoade, numarul de sezoane si datele mentionate anterior in tabela
-    si pentru fiecare sezon introduce episoadele in tabela episodes.
-    :param s: 
-    :return: 
+    Verifica daca link-ul primit ca parametru este valid si extrage din request titlul si il afiseaza. Daca titlul a
+    mai fost adaugat o data in baza de date, afiseaza mesajul acest serial a mai fost adaugat o data". In caz contrar,
+    extrage id-ul de pe site al serialului si numarul de episoade si le afiseaza. Daca site-ul nu e in forma corecta cu
+    numarul de episoade in partea stanga a paginii, afiseaza mesajul "eroare la obtinerea numarului de episoade...
+    verificati pagina". Daca numarul de episoade a fost extras corect, il afiseaza, extrage numerul de sezoane si
+    asteapta input pentr scor, ultimul episod vazut, data si snoozed. Insereaza titlul, numarul de episoade, numarul de
+    sezoane si datele mentionate anterior in tabela si pentru fiecare sezon introduce episoadele in tabela episodes.
+    :param s:
+    :return:
     """
     ok_ep = 1
     request = requests.get(s)
@@ -492,10 +506,10 @@ def get_data(s):
 
 def news():
     """
-    Verifica daca exista seriale care au optiunea snoozed pe nu si cauta pentru ele daca numarul de episoade de pe site
-    corespunde cu numarul de episoade din baza de date. In caz afirmativ, sterge tupla corespunzatoare serialului din
-    tabela tvseries_and_score si toate episoadele din tabela episodes si apeleaza functia get_data cu  parametru fiind
-    link-ul filmului. In cazul in care nu exista filme in baza de date, afiseaza mesajul "lista e goala".
+    Verifica daca exista seriale care au optiunea snoozed pe 'nu' si cauta pentru ele daca numarul de episoade de pe
+    site corespunde cu numarul de episoade din baza de date. In caz afirmativ, sterge tupla corespunzatoare serialului
+    din tabela tvseries_and_score si toate episoadele din tabela episodes si apeleaza functia get_data cu  parametru
+    fiind link-ul filmului. In cazul in care nu exista filme in baza de date, afiseaza mesajul "lista e goala".
     :param:
     :return:
     """
@@ -558,7 +572,8 @@ def youtube(s):
 def execute_command(command):
     """
     Verifica daca parametrul primit la intrare reprezinta in intregime sau partial o comanda ce poate fi data de
-    utilizator de la tastatura. Daca nu se potriveste cu nicio optiune, afiseaza mesajul "nu e buna comanda"
+    utilizator de la tastatura. Daca nu se potriveste cu nicio optiune, afiseaza mesajul "nu e buna comanda". Daca se
+    potriveste apeleaza fuctia responsabila cu gestionarea instructiunii primite.
     :param command:
     :return:
     """
