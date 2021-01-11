@@ -147,7 +147,7 @@ def set_score(s):
     pentru tupla care contine titlul extras cu scorul verificat anterior si afiseaza mesajul "succes". Daca nu s-a
     facut update, afiseaza mesajul "nu exista serial cu acest titllu in lista". Daca insa scorul nu este valid, afiseaza
     mesajul "nota pe care ati acordat-o nu este valida"
-    :param s:
+    :param s: string ce contine instructiunea set_score *score* *title*
     :return:
     """
     my_cursor = my_db.cursor()
@@ -187,7 +187,7 @@ def set_date(s):
     verificata anterior si afiseaza mesajul "succes". Daca update-ul nu s-a realizat, afiseaza mesajul "nu exista serial
     cu acest titllu in lista sau ati setat deja aceasta data". In cele 2 cazuri ramase in care validarea datei nu s-a
     realizat cu succes, va afisa mesajul "Data introdusa este invalida".
-    :param s:
+    :param s: stringul care contine instructiunea set_date *data* *titlu* 
     :return:
     """
     my_cursor = my_db.cursor()
@@ -230,7 +230,7 @@ def set_snooze(s):
     Daca da, face update in baza de date pentru tupla care contine titlul extras cu snooze si afiseaza mesajul "succes".
     Daca nu a fost realizat update-ul, afiseaza mesajul "nu exista serial cu acest titllu in lista sau ati setat deja
     aceasta optiune". Daca in schimb variabila snooze este invalida, afiseaza mesajul "input invalid..alegeti da sau nu"
-    :param s:
+    :param s: string ce contine instructiunea set_snooze *titlu* *[da/nu]*
     :return:
     """
     my_cursor = my_db.cursor()
@@ -251,6 +251,12 @@ def set_snooze(s):
 
 
 def extract(s):
+    """
+    Extrage din parametrul primit numarul episodului, sezonul si apoi titlul serialului care se doreste a fi cautat pe
+    Youtube si returneaza un vector de stringuri.
+    :param s:  string ce contine instructiunea yt *titlu* [s*season*e*episod]
+    :return: vector de stringuri ce contine pe prima pozitie titlul, pe a doua sezonul si pe a treia episodul
+    """
     result = []
     s = s[::-1]  # oglinditul lui s
     ep_incep = re.search('e', s).span()[0]
@@ -273,6 +279,14 @@ def extract(s):
 
 
 def nr_ep_per_season(id_serial, season):
+    """
+    Cauta in baza de date toate in tabela episodes toate inregistrarile care au id-ul precizat in primul parametru si 
+    sezonul precizat in al doilea parametru
+    :param id_serial: int ce reprezinta id-ul serialului 
+    :param season: int ce reprezinta sezonul dorit
+    :return: int ce reprezinta numarul de episoade al sezonului precizat prin parametrul season pentru serialul precizat
+    prin parametrul id_serial
+    """
     my_cursor3 = my_db.cursor(buffered=True)
     task = 'select id from episodes WHERE serial = %s and season= %s'  # nr cate ep are sezonul
     info1 = (id_serial, season)  # id-ul filmului si sezonul
@@ -281,7 +295,7 @@ def nr_ep_per_season(id_serial, season):
     return len(result_set1)
 
 
-def set_last_episode(s):  # comentarii parametri
+def set_last_episode(s): 
     """
     Extrage numarul episodului, numarul sezonului si titlul din parametrul primit, le afiseaza si verifica daca au fost
     respectate  intructiunile cu privire la forma comenzii. Daca nu au fost respectate, va afisa mesaje corespunzatoare
@@ -289,8 +303,8 @@ def set_last_episode(s):  # comentarii parametri
     sezonului si numarul episodului sunt valide. Daca sunt, face update in baza de date pentru tupla care contine titlul
     extras cu valoarea variabilei sn_and_ep la last_seen_episode. Daca exista conditii care nu au fost indeplinite,
     va afisa mesaje corespunzatoare problemei intampinate.
-    :param s:
-    :return:
+    :param s: string ce contine instructiunea set_last_episode *titlu* [s*season*e*episode*]
+    :return: 
     """
     ok_seasons = 1
     ok_episodes = 1
@@ -415,7 +429,7 @@ def get_data(s):
     verificati pagina". Daca numarul de episoade a fost extras corect, il afiseaza, extrage numerul de sezoane si
     asteapta input pentr scor, ultimul episod vazut, data si snoozed. Insereaza titlul, numarul de episoade, numarul de
     sezoane si datele mentionate anterior in tabela si pentru fiecare sezon introduce episoadele in tabela episodes.
-    :param s: link
+    :param s: link catre pagina principala a unui serial pe site-ul imdb
     :return:
     """
     ok_ep = 1
@@ -587,7 +601,7 @@ def youtube(s):  # verif exista
     Extrege din parametrul primit cuvintele ce reprezinta stringul de cautare in variabila target si cauta continutul
     pe YouTube. Intoarce rezultatul sub forma unui json si il converteste intr-un dictionar din care selecteaza si
     afiseaza numai link-ul primului rezultat gasit.
-    :param s:
+    :param s: string ce contine instructiunea yt *titlu* [s*season*e*episode*]
     :return:
     """
     ok_seasons = 1
@@ -645,7 +659,7 @@ def execute_command(command):
     Verifica daca parametrul primit la intrare reprezinta in intregime sau partial o comanda ce poate fi data de
     utilizator de la tastatura. Daca nu se potriveste cu nicio optiune, afiseaza mesajul "nu e buna comanda". Daca se
     potriveste apeleaza fuctia responsabila cu gestionarea instructiunii primite.
-    :param command:
+    :param command: string ce contine o instructiune introodusa de utilizator de la tastatura 
     :return:
     """
     if command == 'display':
