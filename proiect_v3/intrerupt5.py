@@ -156,7 +156,9 @@ def set_score(s):
     score = None
     try:
         score_fin = re.search(" ", s).span()[0]
-        score = int(s[0:score_fin])
+        score = s[0:score_fin]
+        score = score[::-1]
+        score = int(score)
     except ValueError:
         print('nu ati introdus scorul')
         scor_valid = False
@@ -177,6 +179,7 @@ def set_score(s):
                 print('succes')
         else:
             print('nota pe care ati acordat-o nu este valida')
+
 
 
 def set_date(s):
