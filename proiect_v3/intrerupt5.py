@@ -18,30 +18,6 @@ except mysql.connector.Error as err:
     sys.exit()
 
 
-# pe de-o parte cu ajutorul unui thread o data la 5 secunde o sa verific daca datele luate cu ajutorul linkurilor
-# difera fata de datele din baza de date
-
-# class TheUpdate(threading.Thread):
-#     """Clasa care contine functiile de baza pentru firul de executie"""
-#     def __init__(self):
-#         """ Initializeaza variabila my_timer cu valoarea timpului curent. Nu returneaza nimic."""
-#         super().__init__()
-#         self.my_timer = time.time()
-#
-#     def restart(self):
-#         """ Initializeaza variabila my_timer cu valoarea timpului curent la care se adauga 120 de secunde."""
-#         self.my_timer = time.time() + 120
-#
-#     def run(self, *args):
-#         """ Apeleaza functia restart() in momentul in care valoarea variabilei my_timer este mai mica sau egala decat
-#         valoarea timpului curent. Nu returneaza nimic"""
-#         self.restart()
-#         while 1:
-#             if time.time() >= self.my_timer:
-
-#                 self.restart()  # resetez timpul
-
-
 def create_db():
     """
     Se conecteaza la localhostt si daca nu exista exceptii creaza baza de date "tvseries" si afiseaza toate bazele de
@@ -695,11 +671,8 @@ create_db()
 create_tb()
 create_tb_episodes()
 
-# t = TheUpdate()
-# t.start()
-# pe de alta parte iau comenzile date de la tastatura si le prelucrez
 while 1:
     x = input()
     # aici introduc comenzile de la tastatura
     execute_command(x)
-    # t.restart() #restart dupa ce executa o comanda
+
